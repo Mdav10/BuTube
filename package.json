@@ -1,7 +1,7 @@
 {
   "name": "akabakuze",
   "version": "1.0.0",
-  "description": "AKABAKUZE - YouTube-like platform",
+  "description": "AKABAKUZE - YouTube-like platform with database video storage",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

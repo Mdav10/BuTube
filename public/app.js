@@ -9,13 +9,10 @@ if (token) {
     fetchUserData();
 }
 
-// Fetch user data
 async function fetchUserData() {
     try {
         const response = await fetch(`${API_URL}/auth/me`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (response.ok) {
             const data = await response.json();
@@ -29,7 +26,6 @@ async function fetchUserData() {
     }
 }
 
-// Update UI based on user
 function updateUIForUser() {
     if (currentUser) {
         document.getElementById('authText').textContent = 'Logout';
@@ -42,14 +38,12 @@ function updateUIForUser() {
     }
 }
 
-// Toggle auth
 function toggleAuth() {
     const container = document.getElementById('authContainer');
     container.style.display = container.style.display === 'none' ? 'block' : 'none';
     document.getElementById('videoContainer').style.display = 'none';
 }
 
-// Toggle auth mode (login/register)
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
     document.getElementById('authTitle').textContent = isLoginMode ? 'Login' : 'Register';
@@ -59,7 +53,6 @@ function toggleAuthMode() {
     document.getElementById('heardFrom').style.display = isLoginMode ? 'none' : 'block';
 }
 
-// Handle authentication
 async function handleAuth(e) {
     e.preventDefault();
     const username = document.getElementById('username').value;
@@ -83,16 +76,15 @@ async function handleAuth(e) {
             document.getElementById('videoContainer').style.display = 'block';
             updateUIForUser();
             loadVideos();
-            alert('Authentication successful!');
+            alert('✅ Authentication successful!');
         } else {
-            alert(data.error || 'Authentication failed');
+            alert('❌ ' + (data.error || 'Authentication failed'));
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        alert('❌ Error: ' + error.message);
     }
 }
 
-// Logout
 function logout() {
     localStorage.removeItem('token');
     currentUser = null;
@@ -103,7 +95,6 @@ function logout() {
     loadVideos();
 }
 
-// Load videos
 async function loadVideos() {
     try {
         const response = await fetch(`${API_URL}/videos`);
@@ -114,17 +105,16 @@ async function loadVideos() {
     }
 }
 
-// Display videos
 function displayVideos(videos) {
     const grid = document.getElementById('videoGrid');
     if (videos.length === 0) {
-        grid.innerHTML = '<p style="text-align:center;font-size:1.2rem;">No videos uploaded yet. Be the first!</p>';
+        grid.innerHTML = '<p style="text-align:center;font-size:1.2rem;padding:50px;">📹 No videos uploaded yet. Be the first!</p>';
         return;
     }
     
     grid.innerHTML = videos.map(video => `
         <div class="video-card" onclick="playVideo(${video.id})">
-            <img src="${video.thumbnail_url || '/default-thumbnail.jpg'}" 
+            <img src="${API_URL}/videos/${video.id}/thumbnail" 
                  alt="${video.title}" 
                  class="video-thumbnail"
                  onerror="this.src='/default-thumbnail.jpg'">
@@ -139,7 +129,6 @@ function displayVideos(videos) {
     `).join('');
 }
 
-// Play video
 async function playVideo(videoId) {
     try {
         const response = await fetch(`${API_URL}/videos/${videoId}`);
@@ -149,9 +138,11 @@ async function playVideo(videoId) {
         const player = document.getElementById('videoPlayer');
         player.style.display = 'flex';
         
+        // Use the video stream endpoint
         const video = document.getElementById('mainVideo');
-        video.src = data.video_url;
+        video.src = `${API_URL}/videos/${videoId}/stream`;
         video.controls = true;
+        video.load();
         
         document.getElementById('videoTitle').textContent = data.title;
         document.getElementById('videoDescription').textContent = data.description || 'No description';
@@ -159,12 +150,14 @@ async function playVideo(videoId) {
         document.getElementById('dislikeCount').textContent = data.dislikes || 0;
         
         displayComments(data.comments || []);
+        
+        // Auto play
+        video.play().catch(e => console.log('Auto-play prevented'));
     } catch (error) {
-        alert('Error loading video: ' + error.message);
+        alert('❌ Error loading video: ' + error.message);
     }
 }
 
-// Close player
 function closePlayer() {
     document.getElementById('videoPlayer').style.display = 'none';
     const video = document.getElementById('mainVideo');
@@ -172,7 +165,6 @@ function closePlayer() {
     video.src = '';
 }
 
-// Like video
 async function likeVideo() {
     if (!currentUser) {
         alert('Please login to like videos');
@@ -190,7 +182,7 @@ async function likeVideo() {
         if (response.ok) {
             const count = parseInt(document.getElementById('likeCount').textContent) + 1;
             document.getElementById('likeCount').textContent = count;
-            alert('Video liked!');
+            alert('👍 Video liked!');
         } else {
             const data = await response.json();
             alert(data.error || 'Failed to like');
@@ -200,7 +192,6 @@ async function likeVideo() {
     }
 }
 
-// Dislike video
 async function dislikeVideo() {
     if (!currentUser) {
         alert('Please login to dislike videos');
@@ -218,7 +209,7 @@ async function dislikeVideo() {
         if (response.ok) {
             const count = parseInt(document.getElementById('dislikeCount').textContent) + 1;
             document.getElementById('dislikeCount').textContent = count;
-            alert('Video disliked!');
+            alert('👎 Video disliked!');
         } else {
             const data = await response.json();
             alert(data.error || 'Failed to dislike');
@@ -228,9 +219,8 @@ async function dislikeVideo() {
     }
 }
 
-// Share video
 async function shareVideo() {
-    const url = window.location.origin + '/video/' + currentVideo.id;
+    const url = window.location.origin + '/?v=' + currentVideo.id;
     if (navigator.share) {
         try {
             await navigator.share({
@@ -238,7 +228,6 @@ async function shareVideo() {
                 text: 'Watch this amazing video on AKABAKUZE!',
                 url: url
             });
-            // Record share
             await fetch(`${API_URL}/videos/${currentVideo.id}/share`, { method: 'POST' });
         } catch (error) {
             if (error.name !== 'AbortError') {
@@ -250,27 +239,26 @@ async function shareVideo() {
     }
 }
 
-// Copy link
 function copyLink() {
-    const url = window.location.origin + '/video/' + currentVideo.id;
+    const url = window.location.origin + '/?v=' + currentVideo.id;
     navigator.clipboard.writeText(url).then(() => {
-        alert('Link copied to clipboard!');
-        // Record share
+        alert('📋 Link copied to clipboard!');
         fetch(`${API_URL}/videos/${currentVideo.id}/share`, { method: 'POST' });
     }).catch(() => {
         prompt('Copy this link:', url);
     });
 }
 
-// Download video
 function downloadVideo() {
+    const url = `${API_URL}/videos/${currentVideo.id}/stream`;
     const link = document.createElement('a');
-    link.href = currentVideo.video_url;
+    link.href = url;
     link.download = currentVideo.title + '.mp4';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 }
 
-// Add comment
 async function addComment() {
     if (!currentUser) {
         alert('Please login to comment');
@@ -296,8 +284,11 @@ async function addComment() {
         if (response.ok) {
             const data = await response.json();
             input.value = '';
-            displayComments([data.comment, ...(currentVideo.comments || [])]);
-            alert('Comment added!');
+            // Reload comments
+            const videoResponse = await fetch(`${API_URL}/videos/${currentVideo.id}`);
+            const videoData = await videoResponse.json();
+            displayComments(videoData.comments || []);
+            alert('💬 Comment added!');
         } else {
             const data = await response.json();
             alert(data.error || 'Failed to add comment');
@@ -307,35 +298,43 @@ async function addComment() {
     }
 }
 
-// Display comments
 function displayComments(comments) {
     const list = document.getElementById('commentsList');
     if (!comments || comments.length === 0) {
-        list.innerHTML = '<p>No comments yet. Be the first!</p>';
+        list.innerHTML = '<p style="color:#aaa;">No comments yet. Be the first!</p>';
         return;
     }
     list.innerHTML = comments.map(comment => `
         <div class="comment">
             <div class="comment-username">${comment.username}</div>
             <div>${comment.comment}</div>
-            <small>${new Date(comment.created_at).toLocaleString()}</small>
+            <small style="color:#888;">${new Date(comment.created_at).toLocaleString()}</small>
         </div>
     `).join('');
 }
 
-// Upload video
 async function uploadVideo(e) {
     e.preventDefault();
     if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-        alert('Only admins can upload videos');
+        alert('❌ Only admins can upload videos');
         return;
     }
     
     const formData = new FormData();
     formData.append('title', document.getElementById('videoTitleInput').value);
     formData.append('description', document.getElementById('videoDescriptionInput').value);
-    formData.append('video', document.getElementById('videoFile').files[0]);
-    formData.append('thumbnail', document.getElementById('thumbnailFile').files[0]);
+    const videoFile = document.getElementById('videoFile').files[0];
+    const thumbnailFile = document.getElementById('thumbnailFile').files[0];
+    
+    if (!videoFile) {
+        alert('Please select a video file');
+        return;
+    }
+    
+    formData.append('video', videoFile);
+    if (thumbnailFile) {
+        formData.append('thumbnail', thumbnailFile);
+    }
     
     try {
         const response = await fetch(`${API_URL}/videos/upload`, {
@@ -347,19 +346,19 @@ async function uploadVideo(e) {
         });
         
         if (response.ok) {
-            alert('Video uploaded successfully!');
+            alert('✅ Video uploaded successfully to database!');
             document.getElementById('uploadForm').reset();
+            showHome();
             loadVideos();
         } else {
             const data = await response.json();
-            alert(data.error || 'Upload failed');
+            alert('❌ ' + (data.error || 'Upload failed'));
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        alert('❌ Error: ' + error.message);
     }
 }
 
-// Show admin dashboard
 async function showAdmin() {
     if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
         alert('Access denied');
@@ -373,9 +372,7 @@ async function showAdmin() {
     
     try {
         const response = await fetch(`${API_URL}/admin/stats`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         const data = await response.json();
         
@@ -406,7 +403,7 @@ async function showAdmin() {
             </div>
         `).join('');
         document.getElementById('adminLogs').innerHTML = `
-            <h3>Recent Activity</h3>
+            <h3>📋 Recent Activity</h3>
             ${logsHtml || 'No logs available'}
         `;
     } catch (error) {
@@ -414,11 +411,10 @@ async function showAdmin() {
     }
 }
 
-// Create admin
 async function createAdmin(e) {
     e.preventDefault();
     if (!currentUser || currentUser.role !== 'super_admin') {
-        alert('Only super admin can create admins');
+        alert('❌ Only super admin can create admins');
         return;
     }
     
@@ -436,7 +432,7 @@ async function createAdmin(e) {
         });
         
         if (response.ok) {
-            alert('Admin created successfully!');
+            alert('✅ Admin created successfully!');
             document.getElementById('newAdminUsername').value = '';
             document.getElementById('newAdminPassword').value = '';
         } else {
@@ -448,7 +444,6 @@ async function createAdmin(e) {
     }
 }
 
-// Show home
 function showHome() {
     document.getElementById('videoContainer').style.display = 'block';
     document.getElementById('uploadContainer').style.display = 'none';
@@ -458,7 +453,6 @@ function showHome() {
     loadVideos();
 }
 
-// Show upload
 function showUpload() {
     if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
         alert('Access denied');
@@ -470,7 +464,6 @@ function showUpload() {
     document.getElementById('joinUsContainer').style.display = 'none';
 }
 
-// Show join us
 function showJoinUs() {
     document.getElementById('videoContainer').style.display = 'none';
     document.getElementById('uploadContainer').style.display = 'none';
@@ -478,16 +471,14 @@ function showJoinUs() {
     document.getElementById('joinUsContainer').style.display = 'block';
 }
 
-// Request pro account
 function requestProAccount() {
     if (!currentUser) {
         alert('Please login first');
         return;
     }
-    alert('Thank you for your interest! An admin will review your request and contact you soon.');
+    alert('📧 Thank you for your interest! An admin will review your request and contact you soon.');
 }
 
-// Social share functions
 function shareToFacebook() {
     const url = window.location.href;
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
@@ -504,7 +495,6 @@ function shareToWhatsApp() {
     window.open(`https://wa.me/?text=${encodeURIComponent('Check out AKABAKUZE: ' + url)}`, '_blank');
 }
 
-// Show trending (similar to home)
 function showTrending() {
     showHome();
 }
@@ -516,7 +506,7 @@ loadVideos();
 const urlParams = new URLSearchParams(window.location.search);
 const videoId = urlParams.get('v');
 if (videoId) {
-    setTimeout(() => playVideo(videoId), 500);
+    setTimeout(() => playVideo(videoId), 1000);
 }
 
-console.log('AKABAKUZE loaded successfully!');
+console.log('🚀 AKABAKUZE loaded successfully!');

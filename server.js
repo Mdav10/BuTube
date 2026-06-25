@@ -10,18 +10,23 @@ const xss = require('xss');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Database connection with increased limits for video storage
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  max: 20, // Max clients in pool
+  idleTimeoutMillis: 30000,
 });
 
+// Security Middleware
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -29,9 +34,10 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      mediaSrc: ["'self'", "data:", "https:"],
+      mediaSrc: ["'self'", "data:", "blob:", "https:"],
     },
   },
+  crossOriginEmbedderPolicy: false,
 }));
 
 app.use(cors({
@@ -46,41 +52,27 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Increase payload limit for video uploads
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
 
-app.use('/uploads', express.static('uploads'));
+// Static files for thumbnails only
+app.use('/thumbnails', express.static('thumbnails'));
 app.use(express.static('public'));
 
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
-}
-if (!fs.existsSync('uploads/videos')) {
-  fs.mkdirSync('uploads/videos');
-}
-if (!fs.existsSync('uploads/thumbnails')) {
-  fs.mkdirSync('uploads/thumbnails');
+// Create thumbnails directory
+if (!fs.existsSync('thumbnails')) {
+  fs.mkdirSync('thumbnails');
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (file.fieldname === 'video') {
-      cb(null, 'uploads/videos/');
-    } else if (file.fieldname === 'thumbnail') {
-      cb(null, 'uploads/thumbnails/');
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Multer configuration for memory storage (videos go to database)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024
+    fileSize: 500 * 1024 * 1024 // 500MB max
   },
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'video') {
@@ -99,8 +91,10 @@ const upload = multer({
   }
 });
 
+// Database initialization with video storage
 async function initDatabase() {
   try {
+    // Drop and recreate tables with bytea for video storage
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -119,8 +113,11 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
-        video_url VARCHAR(500) NOT NULL,
-        thumbnail_url VARCHAR(500),
+        video_data BYTEA NOT NULL,
+        video_mimetype VARCHAR(100),
+        video_filename VARCHAR(255),
+        thumbnail_data BYTEA,
+        thumbnail_mimetype VARCHAR(100),
         uploader_id INTEGER REFERENCES users(id),
         views INTEGER DEFAULT 0,
         likes INTEGER DEFAULT 0,
@@ -175,6 +172,7 @@ async function initDatabase() {
       );
     `);
 
+    // Create super admin
     const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
     
@@ -185,18 +183,21 @@ async function initDatabase() {
       [process.env.ADMIN_USERNAME, hashedPassword, hashedSecret]
     );
 
+    // Initialize stats
     await pool.query(
       `INSERT INTO website_stats (total_visits, total_users, total_videos) 
        SELECT 0, 0, 0 
        WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
     );
 
-    console.log('Database initialized successfully');
+    console.log('✅ Database initialized successfully with video storage');
   } catch (error) {
-    console.error('Database initialization error:', error);
+    console.error('❌ Database initialization error:', error);
+    throw error;
   }
 }
 
+// Authentication middleware
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -207,7 +208,7 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.userId]);
+    const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
     
     if (user.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -225,11 +226,9 @@ const authorize = (...roles) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
-    
     next();
   };
 };
@@ -238,7 +237,6 @@ async function logUserActivity(userId, action, details, req) {
   try {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Unknown';
-    
     await pool.query(
       `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
        VALUES ($1, $2, $3, $4, $5)`,
@@ -249,6 +247,9 @@ async function logUserActivity(userId, action, details, req) {
   }
 }
 
+// ============== API ROUTES ==============
+
+// Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     res.json({ user: req.user });
@@ -257,6 +258,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode, heardFrom } = req.body;
@@ -265,11 +267,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    const existingUser = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
-    
+    const existingUser = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'Username already exists' });
     }
@@ -285,11 +283,7 @@ app.post('/api/auth/register', async (req, res) => {
     );
     
     const user = result.rows[0];
-    
-    await pool.query(
-      'UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1'
-    );
-    
+    await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
     await logUserActivity(user.id, 'register', { heardFrom }, req);
     
     const token = jwt.sign(
@@ -298,20 +292,14 @@ app.post('/api/auth/register', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role
-      }
-    });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
 
+// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -320,17 +308,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    const result = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
-    
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     const user = result.rows[0];
-    
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -342,10 +325,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     await logUserActivity(user.id, 'login', {}, req);
-    
-    await pool.query(
-      'UPDATE website_stats SET total_visits = total_visits + 1'
-    );
+    await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
@@ -353,24 +333,17 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role
-      }
-    });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
+// Create admin (Super Admin only)
 app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password } = req.body;
-    
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
@@ -386,7 +359,6 @@ app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'),
     );
     
     await logUserActivity(req.user.id, 'create_admin', { newAdmin: username }, req);
-    
     res.json({ message: 'Admin created successfully', admin: result.rows[0] });
   } catch (error) {
     console.error('Create admin error:', error);
@@ -394,6 +366,7 @@ app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'),
   }
 });
 
+// Upload video (stores in database)
 app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -404,37 +377,50 @@ app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admi
     if (!title || !req.files || !req.files.video) {
       return res.status(400).json({ error: 'Title and video are required' });
     }
-    
-    const videoPath = '/uploads/videos/' + req.files.video[0].filename;
-    const thumbnailPath = req.files.thumbnail ? 
-      '/uploads/thumbnails/' + req.files.thumbnail[0].filename : 
-      null;
-    
+
+    const videoFile = req.files.video[0];
+    const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
+
+    // Store video in database as bytea
     const result = await pool.query(
-      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING *`,
-      [title, description || '', videoPath, thumbnailPath, req.user.id]
+      `INSERT INTO videos 
+       (title, description, video_data, video_mimetype, video_filename, 
+        thumbnail_data, thumbnail_mimetype, uploader_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING id, title, description, uploader_id, created_at`,
+      [
+        title, 
+        description || '', 
+        videoFile.buffer,
+        videoFile.mimetype,
+        videoFile.originalname,
+        thumbnailFile ? thumbnailFile.buffer : null,
+        thumbnailFile ? thumbnailFile.mimetype : null,
+        req.user.id
+      ]
     );
     
     await logUserActivity(req.user.id, 'upload_video', { videoId: result.rows[0].id, title }, req);
-    
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
     
     res.json({ 
-      message: 'Video uploaded successfully', 
-      video: result.rows[0] 
+      message: 'Video uploaded successfully to database', 
+      video: result.rows[0]
     });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Failed to upload video' });
+    res.status(500).json({ error: 'Failed to upload video: ' + error.message });
   }
 });
 
+// Get all videos (metadata only)
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT v.*, u.username as uploader_name 
+      `SELECT v.id, v.title, v.description, v.uploader_id, v.views, 
+              v.likes, v.dislikes, v.share_count, v.created_at,
+              u.username as uploader_name,
+              CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
        FROM videos v 
        JOIN users u ON v.uploader_id = u.id 
        WHERE v.is_active = true 
@@ -448,10 +434,12 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
+// Get video by ID (with data)
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
     
+    // Update views
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
     const result = await pool.query(
@@ -466,6 +454,9 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
     
+    const video = result.rows[0];
+    
+    // Get comments
     const commentsResult = await pool.query(
       `SELECT c.*, u.username 
        FROM comments c 
@@ -475,9 +466,14 @@ app.get('/api/videos/:id', async (req, res) => {
       [videoId]
     );
     
+    // Return video without the large binary data (will be served separately)
+    const { video_data, thumbnail_data, ...videoMetadata } = video;
+    
     res.json({
-      ...result.rows[0],
-      comments: commentsResult.rows
+      ...videoMetadata,
+      comments: commentsResult.rows,
+      has_video: !!video_data,
+      has_thumbnail: !!thumbnail_data
     });
   } catch (error) {
     console.error('Get video error:', error);
@@ -485,6 +481,55 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+// Stream video from database
+app.get('/api/videos/:id/stream', async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    
+    const result = await pool.query(
+      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].video_data) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const video = result.rows[0];
+    res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
+    res.setHeader('Content-Length', video.video_data.length);
+    res.send(video.video_data);
+  } catch (error) {
+    console.error('Stream error:', error);
+    res.status(500).json({ error: 'Failed to stream video' });
+  }
+});
+
+// Get thumbnail from database
+app.get('/api/videos/:id/thumbnail', async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    
+    const result = await pool.query(
+      'SELECT thumbnail_data, thumbnail_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
+      // Return default thumbnail
+      return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
+    }
+    
+    const thumbnail = result.rows[0];
+    res.setHeader('Content-Type', thumbnail.thumbnail_mimetype || 'image/jpeg');
+    res.send(thumbnail.thumbnail_data);
+  } catch (error) {
+    console.error('Thumbnail error:', error);
+    res.status(500).json({ error: 'Failed to get thumbnail' });
+  }
+});
+
+// Like/Dislike video
 app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -505,10 +550,7 @@ app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
     }
     
     const field = action === 'like' ? 'likes' : 'dislikes';
-    await pool.query(
-      `UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`,
-      [videoId]
-    );
+    await pool.query(`UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`, [videoId]);
     
     await pool.query(
       `INSERT INTO user_actions (user_id, video_id, action_type, action_data) 
@@ -517,7 +559,6 @@ app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
     );
     
     await logUserActivity(req.user.id, 'like_video', { videoId, action }, req);
-    
     res.json({ message: `${action} recorded successfully` });
   } catch (error) {
     console.error('Like error:', error);
@@ -525,6 +566,7 @@ app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   }
 });
 
+// Add comment
 app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -544,7 +586,6 @@ app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
     );
     
     await logUserActivity(req.user.id, 'comment_video', { videoId, comment: sanitizedComment }, req);
-    
     res.json({ message: 'Comment added successfully', comment: result.rows[0] });
   } catch (error) {
     console.error('Comment error:', error);
@@ -552,12 +593,11 @@ app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   }
 });
 
+// Share video
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = req.params.id;
-    
     await pool.query('UPDATE videos SET share_count = share_count + 1 WHERE id = $1', [videoId]);
-    
     res.json({ message: 'Share recorded successfully' });
   } catch (error) {
     console.error('Share error:', error);
@@ -565,14 +605,17 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
+// Admin stats
 app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
     const users = await pool.query('SELECT COUNT(*) as total FROM users');
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
     const logs = await pool.query(
-      `SELECT * FROM user_logs 
-       ORDER BY created_at DESC 
+      `SELECT l.*, u.username 
+       FROM user_logs l 
+       LEFT JOIN users u ON l.user_id = u.id 
+       ORDER BY l.created_at DESC 
        LIMIT 100`
     );
     
@@ -588,53 +631,18 @@ app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin')
   }
 });
 
-app.get('/api/admin/logs', authenticateToken, authorize('super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT l.*, u.username 
-       FROM user_logs l 
-       LEFT JOIN users u ON l.user_id = u.id 
-       ORDER BY l.created_at DESC 
-       LIMIT 500`
-    );
-    
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Logs error:', error);
-    res.status(500).json({ error: 'Failed to get logs' });
-  }
-});
-
+// Delete video
 app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = req.params.id;
     
-    const videoResult = await pool.query('SELECT * FROM videos WHERE id = $1', [videoId]);
+    const videoResult = await pool.query('SELECT title FROM videos WHERE id = $1', [videoId]);
     if (videoResult.rows.length === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
     
-    const video = videoResult.rows[0];
-    try {
-      if (video.video_url) {
-        const videoPath = path.join(__dirname, video.video_url);
-        if (fs.existsSync(videoPath)) {
-          fs.unlinkSync(videoPath);
-        }
-      }
-      if (video.thumbnail_url) {
-        const thumbPath = path.join(__dirname, video.thumbnail_url);
-        if (fs.existsSync(thumbPath)) {
-          fs.unlinkSync(thumbPath);
-        }
-      }
-    } catch (err) {
-      console.error('Error deleting files:', err);
-    }
-    
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
-    
-    await logUserActivity(req.user.id, 'delete_video', { videoId, title: video.title }, req);
+    await logUserActivity(req.user.id, 'delete_video', { videoId, title: videoResult.rows[0].title }, req);
     
     res.json({ message: 'Video deleted successfully' });
   } catch (error) {
@@ -643,17 +651,21 @@ app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin
   }
 });
 
+// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Start server
 app.listen(PORT, async () => {
   await initDatabase();
-  console.log(`AKABAKUZE server running on port ${PORT}`);
-  console.log(`Super Admin username: ${process.env.ADMIN_USERNAME}`);
+  console.log(`🚀 AKABAKUZE server running on port ${PORT}`);
+  console.log(`🔑 Super Admin: ${process.env.ADMIN_USERNAME}`);
+  console.log(`📁 Videos stored in database (PostgreSQL)`);
 });

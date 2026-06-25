@@ -70,10 +70,10 @@
         <div id="videoPlayer" style="display:none;" class="video-player">
             <div class="player-container">
                 <div class="close-player" onclick="closePlayer()">&times;</div>
-                <video id="mainVideo" controls style="width:100%; max-height:500px;"></video>
+                <video id="mainVideo" controls style="width:100%; max-height:500px; background:#000;"></video>
                 <div class="video-info">
                     <h2 id="videoTitle"></h2>
-                    <p id="videoDescription"></p>
+                    <p id="videoDescription" style="color:#aaa;"></p>
                     <div class="video-actions">
                         <button onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
                         <button onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
@@ -93,7 +93,7 @@
         </div>
 
         <div id="uploadContainer" style="display:none;" class="upload-container">
-            <h2>Upload Video</h2>
+            <h2>📹 Upload Video</h2>
             <form id="uploadForm" onsubmit="uploadVideo(event)">
                 <input type="text" id="videoTitleInput" placeholder="Video Title" required>
                 <textarea id="videoDescriptionInput" placeholder="Video Description"></textarea>
@@ -104,7 +104,7 @@
         </div>
 
         <div id="adminContainer" style="display:none;" class="admin-container">
-            <h2>Admin Dashboard</h2>
+            <h2>👑 Admin Dashboard</h2>
             <div id="adminStats" class="admin-stats"></div>
             <div id="adminLogs" class="admin-logs"></div>
             <div class="admin-actions">
@@ -118,7 +118,7 @@
         </div>
 
         <div id="joinUsContainer" style="display:none;" class="join-us-container">
-            <h2>Join Us & Make Money!</h2>
+            <h2>🤝 Join Us & Make Money!</h2>
             <div class="join-content">
                 <p>To become a Pro User and start uploading videos, you must:</p>
                 <ol>
