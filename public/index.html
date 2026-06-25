@@ -2,144 +2,1081 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AKABAKUZE - Share, Watch, Connect</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ff6b6b, #ee5a24); border-radius: 10px; }
+
+        /* Scrolling Bar */
+        .scrolling-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b);
+            background-size: 200% 100%;
+            animation: gradientMove 3s ease infinite;
+            padding: 10px 0;
+            overflow: hidden;
+            box-shadow: 0 4px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .scrolling-text {
+            animation: scrollText 25s linear infinite;
+            white-space: nowrap;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+        }
+
+        @keyframes scrollText {
+            0% { transform: translateX(100vw); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 45px;
+            left: 0;
+            right: 0;
+            z-index: 9998;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px 0;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.6rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-brand i {
+            font-size: 2rem;
+            -webkit-text-fill-color: #ff6b6b;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #aaa;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .nav-links a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .nav-links a.active {
+            color: #fff;
+            background: rgba(255, 107, 107, 0.15);
+        }
+
+        .join-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important;
+            color: #fff !important;
+            font-weight: 700 !important;
+            animation: pulseBtn 2s ease-in-out infinite;
+            padding: 8px 20px !important;
+        }
+
+        @keyframes pulseBtn {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 107, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 107, 107, 0.6); }
+        }
+
+        .join-btn:hover {
+            transform: scale(1.05) !important;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 110px;
+            padding: 20px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Video Grid */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+
+        .video-card {
+            background: #1a1a1a;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        .video-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #111;
+        }
+
+        .video-duration {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.85);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .video-info {
+            padding: 16px;
+        }
+
+        .video-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        .video-meta {
+            font-size: 0.85rem;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .video-meta i {
+            font-size: 0.7rem;
+        }
+
+        /* Auth Modal */
+        .auth-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .auth-overlay.show {
+            display: flex;
+        }
+
+        .auth-box {
+            background: #1a1a1a;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .auth-box h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .auth-box .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .auth-box input, .auth-box select {
+            width: 100%;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .auth-box input:focus, .auth-box select:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.1);
+        }
+
+        .auth-box input::placeholder {
+            color: #555;
+        }
+
+        .auth-box select option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .auth-box .btn-primary {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 6px;
+        }
+
+        .auth-box .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        .auth-box .auth-toggle {
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+            font-size: 0.95rem;
+        }
+
+        .auth-box .auth-toggle a {
+            color: #ff6b6b;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .auth-box .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .auth-close:hover {
+            background: rgba(255,255,255,0.1);
+            transform: rotate(90deg);
+        }
+
+        /* Video Player Modal */
+        .player-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 99998;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .player-overlay.show {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .player-container {
+            max-width: 1000px;
+            width: 100%;
+            background: #0a0a0a;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 20px auto;
+        }
+
+        .player-container video {
+            width: 100%;
+            max-height: 70vh;
+            background: #000;
+        }
+
+        .player-info {
+            padding: 24px;
+        }
+
+        .player-info h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .player-info .desc {
+            color: #aaa;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .player-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .player-actions button {
+            padding: 10px 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-actions button:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px);
+        }
+
+        .player-actions .liked {
+            color: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+
+        .close-player {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .close-player:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+
+        .comments-section {
+            margin-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 20px;
+        }
+
+        .comments-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+        }
+
+        .comment {
+            background: rgba(255,255,255,0.03);
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .comment .username {
+            font-weight: 600;
+            color: #ff6b6b;
+            margin-bottom: 4px;
+        }
+
+        .comment .text {
+            color: #ccc;
+            font-size: 0.95rem;
+        }
+
+        .comment .time {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .add-comment {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .add-comment input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .add-comment input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+        }
+
+        .add-comment button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-comment button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Upload Page */
+        .upload-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .upload-container h2 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-container .sub {
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .upload-container input, .upload-container textarea {
+            width: 100%;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .upload-container textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .upload-container input:focus, .upload-container textarea:focus {
+            outline: none;
+            border-color: #ff6b6b;
+        }
+
+        .upload-container .file-input {
+            padding: 20px;
+            border: 2px dashed rgba(255,255,255,0.08);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 14px;
+        }
+
+        .upload-container .file-input:hover {
+            border-color: #ff6b6b;
+            background: rgba(255,107,107,0.02);
+        }
+
+        .upload-container .btn-upload {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-container .btn-upload:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Admin Dashboard */
+        .admin-container {
+            padding: 20px 0;
+        }
+
+        .admin-container h2 {
+            font-size: 1.8rem;
+            margin-bottom: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-card .label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .admin-actions {
+            background: #1a1a1a;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .admin-actions h3 {
+            margin-bottom: 16px;
+        }
+
+        .admin-actions input {
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            font-size: 0.95rem;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            min-width: 200px;
+        }
+
+        .admin-actions input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+        }
+
+        .admin-actions button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .admin-actions button:hover {
+            transform: scale(1.02);
+        }
+
+        .logs-container {
+            margin-top: 20px;
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .logs-container .log-entry {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .logs-container .log-entry strong {
+            color: #fff;
+        }
+
+        /* Join Us */
+        .join-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+
+        .join-container h2 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .join-container .sub {
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .join-container .steps {
+            text-align: left;
+            margin: 20px 0 30px;
+            padding-left: 20px;
+        }
+
+        .join-container .steps li {
+            margin-bottom: 10px;
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .join-container .share-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .join-container .share-buttons button {
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .join-container .share-buttons button:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px);
+        }
+
+        .join-container .btn-request {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .join-container .btn-request:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Footer */
+        .footer {
+            background: #0a0a0a;
+            padding: 30px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            margin-top: 60px;
+        }
+
+        .footer p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .footer .social {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 12px;
+        }
+
+        .footer .social a {
+            color: #555;
+            font-size: 1.4rem;
+            transition: all 0.3s ease;
+        }
+
+        .footer .social a:hover {
+            color: #ff6b6b;
+            transform: translateY(-3px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .nav-links {
+                justify-content: center;
+            }
+            .nav-links a {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+            .auth-box {
+                padding: 24px;
+            }
+            .player-container {
+                margin: 10px;
+            }
+            .player-actions {
+                justify-content: center;
+            }
+            .join-container .share-buttons {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            padding: 16px 28px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            z-index: 999999;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            max-width: 90%;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .toast.success { border-color: #00b894; }
+        .toast.success i { color: #00b894; }
+        .toast.error { border-color: #ff6b6b; }
+        .toast.error i { color: #ff6b6b; }
+
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
+
+    <!-- Scrolling Bar -->
     <div class="scrolling-bar">
-        <div class="scrolling-text">
-            ⭐ PLEASE SHARE OUR WEBSITE, THAT'S ONLY WHAT WE WANT FOR YOU. ⭐
-        </div>
+        <div class="scrolling-text">⭐ PLEASE SHARE OUR WEBSITE, THAT'S ONLY WHAT WE WANT FOR YOU. ⭐</div>
     </div>
 
+    <!-- Navbar -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">
+            <a href="#" onclick="showHome()" class="nav-brand">
                 <i class="fas fa-play-circle"></i>
                 AKABAKUZE
-            </div>
+            </a>
             <div class="nav-links">
-                <a href="#" onclick="showHome()"><i class="fas fa-home"></i> Home</a>
-                <a href="#" onclick="showTrending()"><i class="fas fa-fire"></i> Trending</a>
-                <a href="#" onclick="showUpload()" id="uploadLink" style="display:none;">
-                    <i class="fas fa-upload"></i> Upload
-                </a>
-                <a href="#" onclick="showAdmin()" id="adminLink" style="display:none;">
-                    <i class="fas fa-crown"></i> Admin
-                </a>
-                <a href="#" onclick="toggleAuth()" id="authLink">
-                    <i class="fas fa-user"></i> <span id="authText">Login</span>
-                </a>
-                <a href="#" onclick="showJoinUs()" class="join-btn">
-                    <i class="fas fa-handshake"></i> Join Us & Make Money!
-                </a>
+                <a href="#" onclick="showHome()" class="active" id="navHome"><i class="fas fa-home"></i> Home</a>
+                <a href="#" onclick="showTrending()" id="navTrending"><i class="fas fa-fire"></i> Trending</a>
+                <a href="#" onclick="showUpload()" id="navUpload" style="display:none;"><i class="fas fa-upload"></i> Upload</a>
+                <a href="#" onclick="showAdmin()" id="navAdmin" style="display:none;"><i class="fas fa-crown"></i> Admin</a>
+                <a href="#" onclick="toggleAuth()" id="navAuth"><i class="fas fa-user"></i> <span id="authText">Login</span></a>
+                <a href="#" onclick="showJoinUs()" class="join-btn"><i class="fas fa-handshake"></i> Join Us</a>
             </div>
         </div>
     </nav>
 
-    <main class="main-content">
-        <div id="authContainer" class="auth-container" style="display:none;">
-            <div class="auth-box">
-                <h2 id="authTitle">Login</h2>
-                <form id="authForm" onsubmit="handleAuth(event)">
-                    <input type="text" id="username" placeholder="Username" required>
-                    <input type="password" id="password" placeholder="Password" required>
-                    <input type="text" id="secretCode" placeholder="Secret Code" required>
-                    <select id="heardFrom" style="display:none;">
-                        <option value="friend">By Friend</option>
-                        <option value="self">Self Research</option>
-                        <option value="facebook">On Facebook</option>
-                        <option value="instagram">On Instagram</option>
-                        <option value="other">Other Media</option>
-                    </select>
-                    <button type="submit" id="authSubmit">Login</button>
-                </form>
-                <p>
-                    <span id="toggleAuthText">Don't have an account?</span>
-                    <a href="#" onclick="toggleAuthMode()" id="toggleAuthLink">Register</a>
-                </p>
-            </div>
-        </div>
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
 
-        <div id="videoContainer" class="video-container">
-            <div id="videoGrid" class="video-grid"></div>
-        </div>
-
-        <div id="videoPlayer" style="display:none;" class="video-player">
-            <div class="player-container">
-                <div class="close-player" onclick="closePlayer()">&times;</div>
-                <video id="mainVideo" controls style="width:100%; max-height:500px; background:#000;"></video>
-                <div class="video-info">
-                    <h2 id="videoTitle"></h2>
-                    <p id="videoDescription" style="color:#aaa;"></p>
-                    <div class="video-actions">
-                        <button onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
-                        <button onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
-                        <button onclick="shareVideo()"><i class="fas fa-share"></i> Share</button>
-                        <button onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
-                    </div>
-                    <div class="comments-section">
-                        <h3>Comments</h3>
-                        <div id="commentsList"></div>
-                        <div class="add-comment">
-                            <input type="text" id="commentInput" placeholder="Add a comment...">
-                            <button onclick="addComment()">Post</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="uploadContainer" style="display:none;" class="upload-container">
-            <h2>📹 Upload Video</h2>
-            <form id="uploadForm" onsubmit="uploadVideo(event)">
-                <input type="text" id="videoTitleInput" placeholder="Video Title" required>
-                <textarea id="videoDescriptionInput" placeholder="Video Description"></textarea>
-                <input type="file" id="videoFile" accept="video/*" required>
-                <input type="file" id="thumbnailFile" accept="image/*">
-                <button type="submit">Upload Video</button>
+    <!-- Auth Overlay -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box">
+            <button class="auth-close" onclick="toggleAuth()">&times;</button>
+            <h2 id="authTitle">Welcome Back</h2>
+            <p class="subtitle" id="authSub">Login to your account</p>
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <input type="text" id="secretCode" placeholder="Secret Code" required>
+                <select id="heardFrom" style="display:none;">
+                    <option value="friend">By Friend</option>
+                    <option value="self">Self Research</option>
+                    <option value="facebook">On Facebook</option>
+                    <option value="instagram">On Instagram</option>
+                    <option value="other">Other Media</option>
+                </select>
+                <button type="submit" class="btn-primary" id="authSubmit">Login</button>
             </form>
+            <div class="auth-toggle">
+                <span id="toggleText">Don't have an account?</span>
+                <a onclick="toggleAuthMode()" id="toggleLink">Register</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Overlay -->
+    <div class="player-overlay" id="playerOverlay">
+        <div class="player-container" style="position:relative;">
+            <button class="close-player" onclick="closePlayer()">&times;</button>
+            <video id="mainVideo" controls style="width:100%; max-height:70vh; background:#000;"></video>
+            <div class="player-info">
+                <h2 id="videoTitle">Video Title</h2>
+                <p class="desc" id="videoDesc">Description</p>
+                <div class="player-actions">
+                    <button onclick="likeVideo()" id="likeBtn"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
+                    <button onclick="dislikeVideo()" id="dislikeBtn"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
+                    <button onclick="shareVideo()"><i class="fas fa-share"></i> Share</button>
+                    <button onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
+                </div>
+                <div class="comments-section">
+                    <h3>Comments <span style="color:#666;font-weight:400;" id="commentCount">0</span></h3>
+                    <div id="commentsList"></div>
+                    <div class="add-comment">
+                        <input type="text" id="commentInput" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') addComment()">
+                        <button onclick="addComment()">Post</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home / Video Grid -->
+        <div id="homeContent">
+            <div class="video-grid" id="videoGrid">
+                <div class="loading"><i class="fas fa-spinner"></i><br>Loading videos...</div>
+            </div>
         </div>
 
-        <div id="adminContainer" style="display:none;" class="admin-container">
-            <h2>👑 Admin Dashboard</h2>
-            <div id="adminStats" class="admin-stats"></div>
-            <div id="adminLogs" class="admin-logs"></div>
-            <div class="admin-actions">
-                <h3>Create Admin Account</h3>
-                <form onsubmit="createAdmin(event)">
-                    <input type="text" id="newAdminUsername" placeholder="New Admin Username" required>
-                    <input type="password" id="newAdminPassword" placeholder="New Admin Password" required>
-                    <button type="submit">Create Admin</button>
+        <!-- Upload -->
+        <div id="uploadContent" class="hidden">
+            <div class="upload-container">
+                <h2>📹 Upload Video</h2>
+                <p class="sub">Share your content with the world</p>
+                <form id="uploadForm" onsubmit="uploadVideo(event)">
+                    <input type="text" id="videoTitle" placeholder="Video Title" required>
+                    <textarea id="videoDesc" placeholder="Video Description"></textarea>
+                    <div class="file-input" onclick="document.getElementById('videoFile').click()">
+                        <i class="fas fa-video" style="font-size:2rem;color:#ff6b6b;"></i>
+                        <p style="margin-top:8px;">Click to select video file</p>
+                        <small style="color:#666;">MP4, AVI, MOV, etc. (Max 500MB)</small>
+                        <input type="file" id="videoFile" accept="video/*" style="display:none;" required>
+                    </div>
+                    <div class="file-input" onclick="document.getElementById('thumbFile').click()">
+                        <i class="fas fa-image" style="font-size:2rem;color:#ff6b6b;"></i>
+                        <p style="margin-top:8px;">Click to select thumbnail (optional)</p>
+                        <small style="color:#666;">JPG, PNG, GIF</small>
+                        <input type="file" id="thumbFile" accept="image/*" style="display:none;">
+                    </div>
+                    <button type="submit" class="btn-upload">Upload Video</button>
                 </form>
             </div>
         </div>
 
-        <div id="joinUsContainer" style="display:none;" class="join-us-container">
-            <h2>🤝 Join Us & Make Money!</h2>
-            <div class="join-content">
-                <p>To become a Pro User and start uploading videos, you must:</p>
-                <ol>
-                    <li>Share this website with 20 people</li>
-                    <li>Each person must visit the website</li>
-                    <li>After sharing, request your Pro account</li>
-                </ol>
-                <div class="share-buttons">
-                    <button onclick="shareToFacebook()"><i class="fab fa-facebook"></i> Share on Facebook</button>
-                    <button onclick="shareToTwitter()"><i class="fab fa-twitter"></i> Share on Twitter</button>
-                    <button onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
-                    <button onclick="copyLink()"><i class="fas fa-copy"></i> Copy Link</button>
+        <!-- Admin -->
+        <div id="adminContent" class="hidden">
+            <div class="admin-container">
+                <h2>👑 Admin Dashboard</h2>
+                <div class="stats-grid" id="statsGrid"></div>
+                <div class="admin-actions">
+                    <h3>Create Admin Account</h3>
+                    <form onsubmit="createAdmin(event)">
+                        <input type="text" id="newAdminUser" placeholder="Admin Username" required>
+                        <input type="password" id="newAdminPass" placeholder="Admin Password" required>
+                        <button type="submit">Create Admin</button>
+                    </form>
                 </div>
-                <button onclick="requestProAccount()" class="request-btn">Request Pro Account</button>
+                <div class="logs-container" id="logsContainer">
+                    <h3 style="margin-bottom:12px;">📋 Recent Activity</h3>
+                    <div id="logsList">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Us -->
+        <div id="joinContent" class="hidden">
+            <div class="join-container">
+                <h2>🤝 Join Us & Make Money!</h2>
+                <p class="sub">Become a content creator and earn</p>
+                <div style="text-align:left;background:rgba(255,255,255,0.02);padding:20px;border-radius:16px;margin:20px 0;">
+                    <h4 style="margin-bottom:12px;">How to become a Pro User:</h4>
+                    <ol class="steps">
+                        <li>Share this website with <strong>20 people</strong></li>
+                        <li>Each person must visit the website</li>
+                        <li>After sharing, request your Pro account</li>
+                        <li>Start uploading and earning!</li>
+                    </ol>
+                </div>
+                <div class="share-buttons">
+                    <button onclick="shareFacebook()"><i class="fab fa-facebook"></i> Facebook</button>
+                    <button onclick="shareTwitter()"><i class="fab fa-twitter"></i> Twitter</button>
+                    <button onclick="shareWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                    <button onclick="copySiteLink()"><i class="fas fa-copy"></i> Copy Link</button>
+                </div>
+                <button class="btn-request" onclick="requestPro()">Request Pro Account</button>
             </div>
         </div>
     </main>
 
+    <!-- Footer -->
     <footer class="footer">
         <p>&copy; 2024 AKABAKUZE. All rights reserved.</p>
-        <div class="social-links">
+        <div class="social">
             <a href="#"><i class="fab fa-facebook"></i></a>
             <a href="#"><i class="fab fa-twitter"></i></a>
             <a href="#"><i class="fab fa-instagram"></i></a>
@@ -147,6 +1084,461 @@
         </div>
     </footer>
 
-    <script src="app.js"></script>
+    <script>
+        const API = window.location.origin + '/api';
+        let currentUser = null;
+        let currentVideo = null;
+        let isLogin = true;
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = toast.querySelector('i');
+            const msg = document.getElementById('toastMessage');
+            toast.className = 'toast ' + type;
+            icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            msg.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        // Auth
+        function toggleAuth() {
+            const overlay = document.getElementById('authOverlay');
+            overlay.classList.toggle('show');
+            if (!overlay.classList.contains('show')) {
+                document.getElementById('authForm').reset();
+            }
+        }
+
+        function toggleAuthMode() {
+            isLogin = !isLogin;
+            document.getElementById('authTitle').textContent = isLogin ? 'Welcome Back' : 'Create Account';
+            document.getElementById('authSub').textContent = isLogin ? 'Login to your account' : 'Join the AKABAKUZE community';
+            document.getElementById('authSubmit').textContent = isLogin ? 'Login' : 'Register';
+            document.getElementById('toggleText').textContent = isLogin ? "Don't have an account?" : "Already have an account?";
+            document.getElementById('toggleLink').textContent = isLogin ? 'Register' : 'Login';
+            document.getElementById('heardFrom').style.display = isLogin ? 'none' : 'block';
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const secretCode = document.getElementById('secretCode').value;
+            const heardFrom = document.getElementById('heardFrom').value;
+
+            try {
+                const endpoint = isLogin ? '/auth/login' : '/auth/register';
+                const res = await fetch(API + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, secretCode, heardFrom })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Authentication failed');
+                
+                localStorage.setItem('token', data.token);
+                currentUser = data.user;
+                toggleAuth();
+                updateUI();
+                loadVideos();
+                showToast(isLogin ? 'Welcome back, ' + username + '!' : 'Account created successfully!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            currentUser = null;
+            updateUI();
+            loadVideos();
+            showToast('Logged out');
+        }
+
+        // Update UI based on user
+        function updateUI() {
+            const authText = document.getElementById('authText');
+            const navAuth = document.getElementById('navAuth');
+            const navUpload = document.getElementById('navUpload');
+            const navAdmin = document.getElementById('navAdmin');
+
+            if (currentUser) {
+                authText.textContent = 'Logout';
+                navAuth.onclick = logout;
+                if (['admin', 'super_admin'].includes(currentUser.role)) {
+                    navUpload.style.display = 'inline';
+                    navAdmin.style.display = 'inline';
+                }
+            } else {
+                authText.textContent = 'Login';
+                navAuth.onclick = toggleAuth;
+                navUpload.style.display = 'none';
+                navAdmin.style.display = 'none';
+            }
+        }
+
+        // Load videos
+        async function loadVideos() {
+            try {
+                const res = await fetch(API + '/videos');
+                const videos = await res.json();
+                const grid = document.getElementById('videoGrid');
+                if (!videos.length) {
+                    grid.innerHTML = `
+                        <div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:#666;">
+                            <i class="fas fa-video" style="font-size:4rem;margin-bottom:20px;color:#333;"></i>
+                            <h3 style="color:#fff;">No videos yet</h3>
+                            <p>Be the first to upload!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                grid.innerHTML = videos.map(v => `
+                    <div class="video-card" onclick="playVideo(${v.id})">
+                        <img src="${v.thumbnail_url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%231a1a1a"/%3E%3Ctext x="200" y="110" text-anchor="middle" fill="%23666" font-size="16"%3ENo Thumbnail%3C/text%3E%3C/svg%3E'}" 
+                             class="video-thumbnail" 
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%231a1a1a"/%3E%3Ctext x="200" y="110" text-anchor="middle" fill="%23666" font-size="16"%3ENo Thumbnail%3C/text%3E%3C/svg%3E'"
+                             alt="${v.title}">
+                        <div class="video-info">
+                            <div class="video-title">${v.title}</div>
+                            <div class="video-meta">
+                                <span><i class="fas fa-user"></i> ${v.uploader_name}</span>
+                                <span><i class="fas fa-eye"></i> ${v.views || 0}</span>
+                                <span><i class="fas fa-heart"></i> ${v.likes || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('videoGrid').innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:40px;color:#666;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:3rem;color:#ff6b6b;margin-bottom:16px;"></i>
+                        <p>Failed to load videos: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Play video
+        async function playVideo(id) {
+            try {
+                const res = await fetch(API + '/videos/' + id);
+                const data = await res.json();
+                currentVideo = data;
+                
+                const overlay = document.getElementById('playerOverlay');
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                
+                const video = document.getElementById('mainVideo');
+                video.src = data.video_url;
+                video.load();
+                video.play().catch(() => {});
+                
+                document.getElementById('videoTitle').textContent = data.title;
+                document.getElementById('videoDesc').textContent = data.description || 'No description';
+                document.getElementById('likeCount').textContent = data.likes || 0;
+                document.getElementById('dislikeCount').textContent = data.dislikes || 0;
+                document.getElementById('commentCount').textContent = data.comments?.length || 0;
+                
+                displayComments(data.comments || []);
+            } catch (error) {
+                showToast('Failed to load video: ' + error.message, 'error');
+            }
+        }
+
+        function closePlayer() {
+            const overlay = document.getElementById('playerOverlay');
+            overlay.classList.remove('show');
+            document.body.style.overflow = '';
+            const video = document.getElementById('mainVideo');
+            video.pause();
+            video.src = '';
+        }
+
+        // Comments
+        function displayComments(comments) {
+            const list = document.getElementById('commentsList');
+            if (!comments.length) {
+                list.innerHTML = '<p style="color:#666;padding:10px 0;">No comments yet. Be the first!</p>';
+                return;
+            }
+            list.innerHTML = comments.map(c => `
+                <div class="comment">
+                    <div class="username">${c.username}</div>
+                    <div class="text">${c.comment}</div>
+                    <div class="time">${new Date(c.created_at).toLocaleDateString()}</div>
+                </div>
+            `).join('');
+        }
+
+        async function addComment() {
+            if (!currentUser) {
+                showToast('Please login to comment', 'error');
+                return;
+            }
+            const input = document.getElementById('commentInput');
+            const comment = input.value.trim();
+            if (!comment) return;
+            
+            try {
+                const res = await fetch(API + '/videos/' + currentVideo.id + '/comment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify({ comment })
+                });
+                if (!res.ok) throw new Error('Failed to add comment');
+                input.value = '';
+                const data = await res.json();
+                const videoRes = await fetch(API + '/videos/' + currentVideo.id);
+                const videoData = await videoRes.json();
+                displayComments(videoData.comments || []);
+                document.getElementById('commentCount').textContent = videoData.comments?.length || 0;
+                showToast('Comment added!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Like/Dislike
+        async function likeVideo() {
+            if (!currentUser) { showToast('Please login', 'error'); return; }
+            await interactVideo('like');
+        }
+
+        async function dislikeVideo() {
+            if (!currentUser) { showToast('Please login', 'error'); return; }
+            await interactVideo('dislike');
+        }
+
+        async function interactVideo(action) {
+            try {
+                const res = await fetch(API + '/videos/' + currentVideo.id + '/like', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify({ action })
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed');
+                }
+                const count = document.getElementById(action + 'Count');
+                count.textContent = parseInt(count.textContent) + 1;
+                showToast('Video ' + action + 'd!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Share
+        async function shareVideo() {
+            const url = window.location.origin + '/?v=' + currentVideo.id;
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: currentVideo.title, url });
+                    await fetch(API + '/videos/' + currentVideo.id + '/share', { method: 'POST' });
+                } catch (e) { if (e.name !== 'AbortError') copyLink(url); }
+            } else {
+                copyLink(url);
+            }
+        }
+
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Link copied!');
+                fetch(API + '/videos/' + currentVideo.id + '/share', { method: 'POST' });
+            }).catch(() => {
+                prompt('Copy this link:', url);
+            });
+        }
+
+        function downloadVideo() {
+            if (!currentVideo) return;
+            window.open(currentVideo.video_url, '_blank');
+        }
+
+        // Upload
+        async function uploadVideo(e) {
+            e.preventDefault();
+            if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+                showToast('Only admins can upload', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('title', document.getElementById('videoTitle').value);
+            formData.append('description', document.getElementById('videoDesc').value);
+            const videoFile = document.getElementById('videoFile').files[0];
+            const thumbFile = document.getElementById('thumbFile').files[0];
+            if (!videoFile) { showToast('Please select a video', 'error'); return; }
+            formData.append('video', videoFile);
+            if (thumbFile) formData.append('thumbnail', thumbFile);
+
+            try {
+                const res = await fetch(API + '/videos/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed');
+                showToast('Video uploaded successfully!');
+                document.getElementById('uploadForm').reset();
+                showHome();
+                loadVideos();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Admin
+        async function showAdmin() {
+            if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+                showToast('Access denied', 'error');
+                return;
+            }
+            hideAll();
+            document.getElementById('adminContent').classList.remove('hidden');
+            document.getElementById('navAdmin').classList.add('active');
+            
+            try {
+                const res = await fetch(API + '/admin/stats', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await res.json();
+                
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card"><div class="number">${data.stats.total_visits || 0}</div><div class="label">Total Visits</div></div>
+                    <div class="stat-card"><div class="number">${data.userCount || 0}</div><div class="label">Total Users</div></div>
+                    <div class="stat-card"><div class="number">${data.videoCount || 0}</div><div class="label">Total Videos</div></div>
+                    <div class="stat-card"><div class="number">${data.stats.total_views || 0}</div><div class="label">Total Views</div></div>
+                `;
+                
+                document.getElementById('logsList').innerHTML = data.recentLogs.length ? 
+                    data.recentLogs.map(l => `
+                        <div class="log-entry">
+                            <strong>${l.username || 'Unknown'}</strong> - 
+                            ${l.action} - 
+                            <span style="color:#666;">${new Date(l.created_at).toLocaleString()}</span>
+                        </div>
+                    `).join('') : 
+                    '<p style="color:#666;padding:10px 0;">No logs available</p>';
+            } catch (error) {
+                showToast('Failed to load admin data', 'error');
+            }
+        }
+
+        async function createAdmin(e) {
+            e.preventDefault();
+            if (!currentUser || currentUser.role !== 'super_admin') {
+                showToast('Only super admin can create admins', 'error');
+                return;
+            }
+            const username = document.getElementById('newAdminUser').value;
+            const password = document.getElementById('newAdminPass').value;
+            
+            try {
+                const res = await fetch(API + '/admin/create-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed');
+                showToast('Admin created successfully!');
+                document.getElementById('newAdminUser').value = '';
+                document.getElementById('newAdminPass').value = '';
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Navigation
+        function showHome() {
+            hideAll();
+            document.getElementById('homeContent').style.display = 'block';
+            document.getElementById('navHome').classList.add('active');
+            loadVideos();
+        }
+
+        function showTrending() { showHome(); }
+
+        function showUpload() {
+            if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+                showToast('Access denied', 'error');
+                return;
+            }
+            hideAll();
+            document.getElementById('uploadContent').classList.remove('hidden');
+            document.getElementById('navUpload').classList.add('active');
+        }
+
+        function showJoinUs() {
+            hideAll();
+            document.getElementById('joinContent').classList.remove('hidden');
+        }
+
+        function hideAll() {
+            document.querySelectorAll('#homeContent, #uploadContent, #adminContent, #joinContent, .hidden').forEach(el => {
+                if (el.id) {
+                    if (el.id === 'homeContent') el.style.display = 'none';
+                    else el.classList.add('hidden');
+                }
+            });
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+        }
+
+        // Share functions
+        function shareFacebook() {
+            window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href), '_blank');
+        }
+        function shareTwitter() {
+            window.open('https://twitter.com/intent/tweet?text=Check%20out%20AKABAKUZE!%20' + encodeURIComponent(window.location.href), '_blank');
+        }
+        function shareWhatsApp() {
+            window.open('https://wa.me/?text=' + encodeURIComponent('Check out AKABAKUZE: ' + window.location.href), '_blank');
+        }
+        function copySiteLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => showToast('Link copied!'));
+        }
+        function requestPro() {
+            if (!currentUser) { showToast('Please login first', 'error'); return; }
+            showToast('Request submitted! Admin will review your account.');
+        }
+
+        // Init
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch(API + '/auth/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(res => res.json()).then(data => {
+                if (data.user) {
+                    currentUser = data.user;
+                    updateUI();
+                    loadVideos();
+                }
+            }).catch(() => localStorage.removeItem('token'));
+        }
+
+        // Check for video in URL
+        const params = new URLSearchParams(window.location.search);
+        const vid = params.get('v');
+        if (vid) setTimeout(() => playVideo(vid), 1000);
+
+        loadVideos();
+        console.log('🚀 AKABAKUZE loaded!');
+    </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
   "name": "akabakuze",
   "version": "1.0.0",
-  "description": "AKABAKUZE - YouTube-like platform with database storage",
+  "description": "AKABAKUZE - Professional video sharing platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,8 +16,6 @@
     "helmet": "^7.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express-rate-limit": "^6.10.0",
-    "xss": "^1.0.14",
     "compression": "^1.7.4"
   },
   "devDependencies": {
