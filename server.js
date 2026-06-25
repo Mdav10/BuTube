@@ -13,6 +13,10 @@ const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
+
+// ✅ IMPORTANT: Enable trust proxy for Render
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3000;
 
 // Database connection with explicit configuration
@@ -61,9 +65,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ✅ Fixed rate limiter with proper configuration
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  validate: { trustProxy: false }, // ✅ Disable validation since we're using trust proxy
+  skip: (req) => {
+    // Skip rate limiting for admin routes if needed
+    return false;
+  }
 });
 app.use('/api/', limiter);
 
@@ -210,7 +222,6 @@ async function initDatabase() {
         console.error('❌ Failed to connect to database after 5 attempts');
         throw error;
       }
-      // Wait 3 seconds before retrying
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
@@ -650,18 +661,21 @@ app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin
   }
 });
 
+// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('❌ Error:', err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 // Start server
 app.listen(PORT, async () => {
   console.log(`🚀 AKABAKUZE server starting on port ${PORT}`);
+  console.log(`🔧 Trust proxy: enabled for Render`);
   try {
     await initDatabase();
     console.log(`✅ Server ready!`);
