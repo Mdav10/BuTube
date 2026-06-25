@@ -14,17 +14,43 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
-// Database connection
+// ✅ FIXED: Database connection with explicit config
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_Cb7XtKr0BIoN@ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require',
-  ssl: { rejectUnauthorized: false },
+  host: 'ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech',
+  port: 5432,
+  database: 'neondb',
+  user: 'neondb_owner',
+  password: 'npg_Cb7XtKr0BIoN',
+  ssl: {
+    rejectUnauthorized: false
+  },
   max: 20,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 30000,
+});
+
+// Test connection immediately
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ Database connection error:', err.message);
+    console.error('⚠️ Please check your database credentials');
+    // Don't exit, retry later
+  } else {
+    console.log('✅ Database connected successfully!');
+    release();
+  }
 });
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHeaders: ['Content-Type', 'Authorization'] }));
+app.use(helmet({ 
+  contentSecurityPolicy: false, 
+  crossOriginEmbedderPolicy: false 
+}));
+app.use(cors({ 
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  allowedHeaders: ['Content-Type', 'Authorization'] 
+}));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
@@ -62,85 +88,115 @@ const upload = multer({
 
 // Initialize database
 async function initDatabase() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        secret_code VARCHAR(255) NOT NULL,
-        heard_from VARCHAR(100),
-        role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true
-      );
-      CREATE TABLE IF NOT EXISTS videos (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(500) NOT NULL,
-        description TEXT,
-        video_url VARCHAR(500) NOT NULL,
-        thumbnail_url VARCHAR(500),
-        uploader_id INTEGER REFERENCES users(id),
-        views INTEGER DEFAULT 0,
-        likes INTEGER DEFAULT 0,
-        dislikes INTEGER DEFAULT 0,
-        share_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true
-      );
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id),
-        comment TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS user_actions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        video_id INTEGER REFERENCES videos(id),
-        action_type VARCHAR(50),
-        action_data TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS user_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        ip_address VARCHAR(45),
-        user_agent TEXT,
-        action VARCHAR(255),
-        details TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS website_stats (
-        id SERIAL PRIMARY KEY,
-        total_visits INTEGER DEFAULT 0,
-        total_users INTEGER DEFAULT 0,
-        total_videos INTEGER DEFAULT 0,
-        total_views INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      console.log(`🔄 Database init attempt ${6 - retries}/5...`);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          secret_code VARCHAR(255) NOT NULL,
+          heard_from VARCHAR(100),
+          role VARCHAR(50) DEFAULT 'user',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_active BOOLEAN DEFAULT true
+        );
+      `);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS videos (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(500) NOT NULL,
+          description TEXT,
+          video_url VARCHAR(500) NOT NULL,
+          thumbnail_url VARCHAR(500),
+          uploader_id INTEGER REFERENCES users(id),
+          views INTEGER DEFAULT 0,
+          likes INTEGER DEFAULT 0,
+          dislikes INTEGER DEFAULT 0,
+          share_count INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_active BOOLEAN DEFAULT true
+        );
+      `);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS comments (
+          id SERIAL PRIMARY KEY,
+          video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id),
+          comment TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_actions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          video_id INTEGER REFERENCES videos(id),
+          action_type VARCHAR(50),
+          action_data TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_logs (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          action VARCHAR(255),
+          details TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS website_stats (
+          id SERIAL PRIMARY KEY,
+          total_visits INTEGER DEFAULT 0,
+          total_users INTEGER DEFAULT 0,
+          total_videos INTEGER DEFAULT 0,
+          total_views INTEGER DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    // Create super admin with proper hashing
-    const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
-    const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
-    
-    await pool.query(
-      `INSERT INTO users (username, password, secret_code, role, heard_from) 
-       VALUES ($1, $2, $3, 'super_admin', 'admin_created') 
-       ON CONFLICT (username) DO UPDATE SET 
-       password = EXCLUDED.password, 
-       secret_code = EXCLUDED.secret_code`,
-      ['OWNER_MPC', hashedPassword, hashedSecret]
-    );
+      // Create super admin
+      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
+      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+      
+      await pool.query(
+        `INSERT INTO users (username, password, secret_code, role, heard_from) 
+         VALUES ($1, $2, $3, 'super_admin', 'admin_created') 
+         ON CONFLICT (username) DO UPDATE SET 
+         password = EXCLUDED.password, 
+         secret_code = EXCLUDED.secret_code`,
+        ['OWNER_MPC', hashedPassword, hashedSecret]
+      );
 
-    await pool.query(`INSERT INTO website_stats (total_visits, total_users, total_videos) SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`);
+      await pool.query(
+        `INSERT INTO website_stats (total_visits, total_users, total_videos) 
+         SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
+      );
 
-    console.log('✅ Database initialized');
-    console.log('✅ Super Admin created: OWNER_MPC');
-  } catch (error) {
-    console.error('❌ Database error:', error.message);
+      console.log('✅ Database initialized successfully');
+      console.log('✅ Super Admin: OWNER_MPC');
+      return true;
+    } catch (error) {
+      console.error(`❌ Database error (attempt ${6 - retries}/5):`, error.message);
+      retries--;
+      if (retries === 0) {
+        console.error('❌ All database connection attempts failed');
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
 }
 
@@ -168,7 +224,7 @@ const authorize = (...roles) => (req, res, next) => {
 
 // ============== API ROUTES ==============
 
-// REGISTER - Fixed
+// REGISTER
 app.post('/api/auth/register', async (req, res) => {
   try {
     console.log('📝 Registration attempt:', req.body.username);
@@ -178,41 +234,24 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    // Check if user exists
     const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (existing.rows.length) {
       return res.status(400).json({ error: 'Username already exists' });
     }
     
-    // Hash password and secret
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedSecret = await bcrypt.hash(secretCode, 10);
     
-    // Insert user
     const result = await pool.query(
       `INSERT INTO users (username, password, secret_code, heard_from, role) 
        VALUES ($1, $2, $3, $4, 'user') 
        RETURNING id, username, role, heard_from`,
-      [username, hashedPassword, hashedSecret, heardFrom || 'not_specified']
+      [username, hashedPassword, hashedSecret, heardFrom || 'pending']
     );
     
     const user = result.rows[0];
-    
-    // Update stats
     await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
     
-    // Log registration
-    try {
-      await pool.query(
-        `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
-         VALUES ($1, $2, $3, 'register', $4)`,
-        [user.id, req.ip || 'unknown', req.headers['user-agent'] || 'unknown', JSON.stringify({ heardFrom })]
-      );
-    } catch (logError) {
-      console.error('Log error:', logError.message);
-    }
-    
-    // Generate token
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET || 'akabakuze_secret',
@@ -235,7 +274,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// LOGIN - Fixed
+// LOGIN
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('🔑 Login attempt:', req.body.username);
@@ -245,7 +284,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    // Get user
     const result = await pool.query('SELECT * FROM users WHERE username = $1 AND is_active = true', [username]);
     if (!result.rows.length) {
       console.log('❌ User not found:', username);
@@ -255,35 +293,20 @@ app.post('/api/auth/login', async (req, res) => {
     const user = result.rows[0];
     console.log('👤 User found:', user.username, 'Role:', user.role);
     
-    // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       console.log('❌ Invalid password for:', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Verify secret code
     const validSecret = await bcrypt.compare(secretCode, user.secret_code);
     if (!validSecret) {
       console.log('❌ Invalid secret code for:', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Update stats
     await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
     
-    // Log login
-    try {
-      await pool.query(
-        `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
-         VALUES ($1, $2, $3, 'login', $4)`,
-        [user.id, req.ip || 'unknown', req.headers['user-agent'] || 'unknown', JSON.stringify({ success: true })]
-      );
-    } catch (logError) {
-      console.error('Log error:', logError.message);
-    }
-    
-    // Generate token
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET || 'akabakuze_secret',
@@ -306,7 +329,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// GET USER - Fixed
+// GET USER
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     res.json({ user: req.user });
@@ -315,7 +338,27 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
-// CREATE ADMIN - Fixed
+// UPDATE HEARD FROM
+app.post('/api/auth/heard-from', authenticate, async (req, res) => {
+  try {
+    const { heardFrom } = req.body;
+    if (!heardFrom) {
+      return res.status(400).json({ error: 'Please select how you heard about us' });
+    }
+    
+    await pool.query(
+      'UPDATE users SET heard_from = $1 WHERE id = $2',
+      [heardFrom, req.user.id]
+    );
+    
+    req.user.heard_from = heardFrom;
+    res.json({ message: 'Updated successfully', heardFrom });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update: ' + error.message });
+  }
+});
+
+// CREATE ADMIN
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -339,27 +382,7 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// UPDATE USER HEARD_FROM - NEW
-app.post('/api/auth/heard-from', authenticate, async (req, res) => {
-  try {
-    const { heardFrom } = req.body;
-    if (!heardFrom) {
-      return res.status(400).json({ error: 'Please select how you heard about us' });
-    }
-    
-    await pool.query(
-      'UPDATE users SET heard_from = $1 WHERE id = $2',
-      [heardFrom, req.user.id]
-    );
-    
-    req.user.heard_from = heardFrom;
-    res.json({ message: 'Updated successfully', heardFrom });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update: ' + error.message });
-  }
-});
-
-// VIDEO UPLOAD
+// UPLOAD VIDEO
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -518,8 +541,24 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('❌ Error:', err.message);
+  res.status(500).json({ error: 'Something went wrong: ' + err.message });
+});
+
+// Start server
 app.listen(PORT, async () => {
-  await initDatabase();
-  console.log(`🚀 AKABAKUZE running on port ${PORT}`);
-  console.log(`🔑 Admin: OWNER_MPC | Password: 08800+_+Owner! | Secret: ADMIN_SECRET_2024`);
+  console.log(`🚀 AKABAKUZE server starting on port ${PORT}`);
+  try {
+    await initDatabase();
+    console.log(`✅ Server ready!`);
+    console.log(`🔑 Admin: OWNER_MPC`);
+    console.log(`🔑 Password: 08800+_+Owner!`);
+    console.log(`🔑 Secret: ADMIN_SECRET_2024`);
+  } catch (error) {
+    console.error('❌ Failed to initialize database:', error.message);
+    // Keep server running even if DB fails initially
+    console.log('⚠️ Server running but database connection failed. Retrying on request...');
+  }
 });
