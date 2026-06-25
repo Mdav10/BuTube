@@ -10,20 +10,35 @@ const xss = require('xss');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection with increased limits for video storage
+// Database connection with explicit configuration
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: 'ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech',
+  port: 5432,
+  database: 'neondb',
+  user: 'neondb_owner',
+  password: 'npg_Cb7XtKr0BIoN',
   ssl: {
     rejectUnauthorized: false
   },
-  max: 20, // Max clients in pool
+  max: 20,
   idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+// Test database connection
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ Database connection error:', err.message);
+    console.log('⚠️ Will retry connection...');
+  } else {
+    console.log('✅ Database connected successfully!');
+    release();
+  }
 });
 
 // Security Middleware
@@ -52,27 +67,23 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Increase payload limit for video uploads
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
 
-// Static files for thumbnails only
 app.use('/thumbnails', express.static('thumbnails'));
 app.use(express.static('public'));
 
-// Create thumbnails directory
 if (!fs.existsSync('thumbnails')) {
   fs.mkdirSync('thumbnails');
 }
 
-// Multer configuration for memory storage (videos go to database)
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 500 * 1024 * 1024 // 500MB max
+    fileSize: 500 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'video') {
@@ -91,113 +102,120 @@ const upload = multer({
   }
 });
 
-// Database initialization with video storage
 async function initDatabase() {
-  try {
-    // Drop and recreate tables with bytea for video storage
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        secret_code VARCHAR(255) NOT NULL,
-        heard_from VARCHAR(100),
-        role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      console.log(`🔄 Attempting database connection... (${retries} retries left)`);
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          secret_code VARCHAR(255) NOT NULL,
+          heard_from VARCHAR(100),
+          role VARCHAR(50) DEFAULT 'user',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_active BOOLEAN DEFAULT true
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS videos (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(500) NOT NULL,
+          description TEXT,
+          video_data BYTEA NOT NULL,
+          video_mimetype VARCHAR(100),
+          video_filename VARCHAR(255),
+          thumbnail_data BYTEA,
+          thumbnail_mimetype VARCHAR(100),
+          uploader_id INTEGER REFERENCES users(id),
+          views INTEGER DEFAULT 0,
+          likes INTEGER DEFAULT 0,
+          dislikes INTEGER DEFAULT 0,
+          share_count INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_active BOOLEAN DEFAULT true
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS comments (
+          id SERIAL PRIMARY KEY,
+          video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id),
+          comment TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_actions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          video_id INTEGER REFERENCES videos(id),
+          action_type VARCHAR(50),
+          action_data TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_logs (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          action VARCHAR(255),
+          details TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS website_stats (
+          id SERIAL PRIMARY KEY,
+          total_visits INTEGER DEFAULT 0,
+          total_users INTEGER DEFAULT 0,
+          total_videos INTEGER DEFAULT 0,
+          total_views INTEGER DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
+      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+      
+      await pool.query(
+        `INSERT INTO users (username, password, secret_code, role) 
+         VALUES ($1, $2, $3, 'super_admin') 
+         ON CONFLICT (username) DO NOTHING`,
+        ['OWNER_MPC', hashedPassword, hashedSecret]
       );
-    `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS videos (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(500) NOT NULL,
-        description TEXT,
-        video_data BYTEA NOT NULL,
-        video_mimetype VARCHAR(100),
-        video_filename VARCHAR(255),
-        thumbnail_data BYTEA,
-        thumbnail_mimetype VARCHAR(100),
-        uploader_id INTEGER REFERENCES users(id),
-        views INTEGER DEFAULT 0,
-        likes INTEGER DEFAULT 0,
-        dislikes INTEGER DEFAULT 0,
-        share_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true
+      await pool.query(
+        `INSERT INTO website_stats (total_visits, total_users, total_videos) 
+         SELECT 0, 0, 0 
+         WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
       );
-    `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id),
-        comment TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_actions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        video_id INTEGER REFERENCES videos(id),
-        action_type VARCHAR(50),
-        action_data TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        ip_address VARCHAR(45),
-        user_agent TEXT,
-        action VARCHAR(255),
-        details TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS website_stats (
-        id SERIAL PRIMARY KEY,
-        total_visits INTEGER DEFAULT 0,
-        total_users INTEGER DEFAULT 0,
-        total_videos INTEGER DEFAULT 0,
-        total_views INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // Create super admin
-    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-    const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
-    
-    await pool.query(
-      `INSERT INTO users (username, password, secret_code, role) 
-       VALUES ($1, $2, $3, 'super_admin') 
-       ON CONFLICT (username) DO NOTHING`,
-      [process.env.ADMIN_USERNAME, hashedPassword, hashedSecret]
-    );
-
-    // Initialize stats
-    await pool.query(
-      `INSERT INTO website_stats (total_visits, total_users, total_videos) 
-       SELECT 0, 0, 0 
-       WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
-    );
-
-    console.log('✅ Database initialized successfully with video storage');
-  } catch (error) {
-    console.error('❌ Database initialization error:', error);
-    throw error;
+      console.log('✅ Database initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Database error:', error.message);
+      retries--;
+      if (retries === 0) {
+        console.error('❌ Failed to connect to database after 5 attempts');
+        throw error;
+      }
+      // Wait 3 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
   }
 }
 
-// Authentication middleware
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -207,7 +225,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'akabakuze_super_secret_key_2024');
     const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
     
     if (user.rows.length === 0) {
@@ -249,7 +267,6 @@ async function logUserActivity(userId, action, details, req) {
 
 // ============== API ROUTES ==============
 
-// Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     res.json({ user: req.user });
@@ -258,7 +275,6 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// Register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode, heardFrom } = req.body;
@@ -288,7 +304,7 @@ app.post('/api/auth/register', async (req, res) => {
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'akabakuze_super_secret_key_2024',
       { expiresIn: '7d' }
     );
     
@@ -299,7 +315,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -329,7 +344,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'akabakuze_super_secret_key_2024',
       { expiresIn: '7d' }
     );
     
@@ -340,7 +355,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Create admin (Super Admin only)
 app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -366,7 +380,6 @@ app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'),
   }
 });
 
-// Upload video (stores in database)
 app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -381,7 +394,6 @@ app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admi
     const videoFile = req.files.video[0];
     const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
 
-    // Store video in database as bytea
     const result = await pool.query(
       `INSERT INTO videos 
        (title, description, video_data, video_mimetype, video_filename, 
@@ -413,7 +425,6 @@ app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admi
   }
 });
 
-// Get all videos (metadata only)
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -434,12 +445,10 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// Get video by ID (with data)
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
     
-    // Update views
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
     const result = await pool.query(
@@ -456,7 +465,6 @@ app.get('/api/videos/:id', async (req, res) => {
     
     const video = result.rows[0];
     
-    // Get comments
     const commentsResult = await pool.query(
       `SELECT c.*, u.username 
        FROM comments c 
@@ -466,7 +474,6 @@ app.get('/api/videos/:id', async (req, res) => {
       [videoId]
     );
     
-    // Return video without the large binary data (will be served separately)
     const { video_data, thumbnail_data, ...videoMetadata } = video;
     
     res.json({
@@ -481,7 +488,6 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// Stream video from database
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -505,7 +511,6 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   }
 });
 
-// Get thumbnail from database
 app.get('/api/videos/:id/thumbnail', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -516,7 +521,6 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
     );
     
     if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
-      // Return default thumbnail
       return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
     }
     
@@ -529,7 +533,6 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
   }
 });
 
-// Like/Dislike video
 app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -566,7 +569,6 @@ app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   }
 });
 
-// Add comment
 app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -593,7 +595,6 @@ app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   }
 });
 
-// Share video
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -605,7 +606,6 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
-// Admin stats
 app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -631,7 +631,6 @@ app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin')
   }
 });
 
-// Delete video
 app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -651,12 +650,10 @@ app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin
   }
 });
 
-// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
@@ -664,8 +661,15 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, async () => {
-  await initDatabase();
-  console.log(`🚀 AKABAKUZE server running on port ${PORT}`);
-  console.log(`🔑 Super Admin: ${process.env.ADMIN_USERNAME}`);
-  console.log(`📁 Videos stored in database (PostgreSQL)`);
+  console.log(`🚀 AKABAKUZE server starting on port ${PORT}`);
+  try {
+    await initDatabase();
+    console.log(`✅ Server ready!`);
+    console.log(`🔑 Super Admin: OWNER_MPC`);
+    console.log(`🔑 Password: 08800+_+Owner!`);
+    console.log(`🔑 Secret Code: ADMIN_SECRET_2024`);
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  }
 });
