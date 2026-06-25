@@ -1,4 +1,3 @@
-cat > server.js << 'EOF'
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -16,7 +15,6 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -24,7 +22,6 @@ const pool = new Pool({
   }
 });
 
-// Security Middleware
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -37,32 +34,25 @@ app.use(helmet({
   },
 }));
 
-// CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
 });
 app.use('/api/', limiter);
 
-// Body parser
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Compression
 app.use(compression());
 
-// Static files
 app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
-// Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
@@ -73,7 +63,6 @@ if (!fs.existsSync('uploads/thumbnails')) {
   fs.mkdirSync('uploads/thumbnails');
 }
 
-// Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'video') {
@@ -110,10 +99,8 @@ const upload = multer({
   }
 });
 
-// Database initialization
 async function initDatabase() {
   try {
-    // Create tables
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -125,7 +112,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_active BOOLEAN DEFAULT true
       );
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
@@ -140,7 +129,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_active BOOLEAN DEFAULT true
       );
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
@@ -148,7 +139,9 @@ async function initDatabase() {
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
@@ -157,7 +150,9 @@ async function initDatabase() {
         action_data TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
@@ -167,7 +162,9 @@ async function initDatabase() {
         details TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
@@ -178,7 +175,6 @@ async function initDatabase() {
       );
     `);
 
-    // Create super admin if not exists
     const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
     
@@ -189,7 +185,6 @@ async function initDatabase() {
       [process.env.ADMIN_USERNAME, hashedPassword, hashedSecret]
     );
 
-    // Initialize stats
     await pool.query(
       `INSERT INTO website_stats (total_visits, total_users, total_videos) 
        SELECT 0, 0, 0 
@@ -202,7 +197,6 @@ async function initDatabase() {
   }
 }
 
-// Authentication middleware
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -255,7 +249,6 @@ async function logUserActivity(userId, action, details, req) {
   }
 }
 
-// Get user info
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     res.json({ user: req.user });
@@ -264,7 +257,6 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// Register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode, heardFrom } = req.body;
@@ -320,7 +312,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -376,7 +367,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Create admin
 app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -404,7 +394,6 @@ app.post('/api/admin/create-admin', authenticateToken, authorize('super_admin'),
   }
 });
 
-// Upload video
 app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -442,7 +431,6 @@ app.post('/api/videos/upload', authenticateToken, authorize('admin', 'super_admi
   }
 });
 
-// Get all videos
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -460,7 +448,6 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// Get video by ID
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -498,7 +485,6 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// Like/Dislike
 app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -539,7 +525,6 @@ app.post('/api/videos/:id/like', authenticateToken, async (req, res) => {
   }
 });
 
-// Add comment
 app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -567,7 +552,6 @@ app.post('/api/videos/:id/comment', authenticateToken, async (req, res) => {
   }
 });
 
-// Share video
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -581,7 +565,6 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
-// Admin stats
 app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -605,7 +588,6 @@ app.get('/api/admin/stats', authenticateToken, authorize('admin', 'super_admin')
   }
 });
 
-// Get logs (Super Admin only)
 app.get('/api/admin/logs', authenticateToken, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
@@ -623,7 +605,6 @@ app.get('/api/admin/logs', authenticateToken, authorize('super_admin'), async (r
   }
 });
 
-// Delete video
 app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -662,21 +643,17 @@ app.delete('/api/videos/:id', authenticateToken, authorize('admin', 'super_admin
   }
 });
 
-// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server
 app.listen(PORT, async () => {
   await initDatabase();
   console.log(`AKABAKUZE server running on port ${PORT}`);
   console.log(`Super Admin username: ${process.env.ADMIN_USERNAME}`);
 });
-EOF
