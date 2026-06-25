@@ -7,35 +7,39 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* All your CSS here - same as before */
+        /* Reset and Base */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ff6b6b, #ee5a24); border-radius: 10px; }
         
-        .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 10px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255, 107, 107, 0.3); }
-        @keyframes gradientMove { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        /* Scrolling Bar */
+        .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 10px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
+        @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .scrolling-text { animation: scrollText 25s linear infinite; white-space: nowrap; font-weight: 700; font-size: 1rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); letter-spacing: 2px; }
         @keyframes scrollText { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
         
-        .navbar { position: fixed; top: 45px; left: 0; right: 0; z-index: 9998; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 12px 0; }
+        /* Navbar */
+        .navbar { position: fixed; top: 45px; left: 0; right: 0; z-index: 9998; background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; }
         .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
         .nav-brand i { font-size: 2rem; -webkit-text-fill-color: #ff6b6b; }
         .nav-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .nav-links a { color: #aaa; text-decoration: none; padding: 8px 16px; border-radius: 50px; font-size: 0.9rem; font-weight: 500; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
-        .nav-links a:hover { color: #fff; background: rgba(255, 255, 255, 0.05); transform: translateY(-1px); }
-        .nav-links a.active { color: #fff; background: rgba(255, 107, 107, 0.15); }
+        .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .nav-links a.active { color: #fff; background: rgba(255,107,107,0.15); }
         .join-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important; color: #fff !important; font-weight: 700 !important; animation: pulseBtn 2s ease-in-out infinite; padding: 8px 20px !important; }
-        @keyframes pulseBtn { 0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 107, 0.3); } 50% { box-shadow: 0 0 40px rgba(255, 107, 107, 0.6); } }
+        @keyframes pulseBtn { 0%,100% { box-shadow: 0 0 20px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,107,0.6); } }
         .join-btn:hover { transform: scale(1.05) !important; }
         
+        /* Main Content */
         .main-content { margin-top: 110px; padding: 20px; max-width: 1400px; margin-left: auto; margin-right: auto; }
         
+        /* Video Grid */
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; padding: 20px 0; }
-        .video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); position: relative; }
-        .video-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8); border-color: rgba(255, 107, 107, 0.3); }
+        .video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; transition: all 0.4s ease; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); }
+        .video-card:hover { transform: translateY(-10px); box-shadow: 0 20px 60px rgba(0,0,0,0.8); border-color: rgba(255,107,107,0.3); }
         .video-thumbnail { width: 100%; height: 200px; object-fit: cover; background: #111; }
         .video-info { padding: 16px; }
         .video-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
@@ -44,25 +48,23 @@
         /* Auth Overlay */
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
         .auth-overlay.show { display: flex; }
-        .auth-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 420px; width: 100%; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
+        .auth-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 420px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
         .auth-box h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
         .auth-box .subtitle { color: #888; margin-bottom: 30px; font-size: 0.95rem; }
-        .auth-box input, .auth-box select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: rgba(255, 255, 255, 0.04); color: #fff; font-size: 1rem; transition: all 0.3s ease; font-family: inherit; }
-        .auth-box input:focus, .auth-box select:focus { outline: none; border-color: #ff6b6b; background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 30px rgba(255, 107, 107, 0.1); }
+        .auth-box input { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 1rem; transition: all 0.3s ease; font-family: inherit; }
+        .auth-box input:focus { outline: none; border-color: #ff6b6b; background: rgba(255,255,255,0.06); box-shadow: 0 0 30px rgba(255,107,107,0.1); }
         .auth-box input::placeholder { color: #555; }
-        .auth-box select option { background: #1a1a1a; color: #fff; }
         .auth-box .btn-primary { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 6px; }
-        .auth-box .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3); }
+        .auth-box .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         .auth-box .auth-toggle { text-align: center; margin-top: 20px; color: #888; font-size: 0.95rem; }
         .auth-box .auth-toggle a { color: #ff6b6b; text-decoration: none; font-weight: 600; cursor: pointer; }
-        .auth-box .auth-toggle a:hover { text-decoration: underline; }
         .auth-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; }
         .auth-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
         
         /* Heard From Modal */
         .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
         .heard-overlay.show { display: flex; }
-        .heard-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 440px; width: 100%; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); }
+        .heard-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 440px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); }
         .heard-box h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
         .heard-box .sub { color: #888; margin-bottom: 24px; }
         .heard-box .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
@@ -71,7 +73,7 @@
         .heard-box .option.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.1); color: #fff; box-shadow: 0 0 30px rgba(255,107,107,0.1); }
         .heard-box .option i { display: block; font-size: 1.8rem; margin-bottom: 8px; }
         .heard-box .btn-submit { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
-        .heard-box .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3); }
+        .heard-box .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         .heard-box .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
         /* Player */
@@ -109,7 +111,7 @@
         .upload-container .file-input { padding: 20px; border: 2px dashed rgba(255,255,255,0.08); border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; margin-bottom: 14px; }
         .upload-container .file-input:hover { border-color: #ff6b6b; background: rgba(255,107,107,0.02); }
         .upload-container .btn-upload { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
-        .upload-container .btn-upload:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3); }
+        .upload-container .btn-upload:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         
         /* Admin */
         .admin-container { padding: 20px 0; }
@@ -118,13 +120,13 @@
         .stat-card { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
         .stat-card .number { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-card .label { color: #888; font-size: 0.9rem; margin-top: 4px; }
-        .admin-actions { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .admin-actions { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
         .admin-actions h3 { margin-bottom: 16px; }
         .admin-actions input { padding: 12px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; margin-right: 10px; margin-bottom: 10px; min-width: 200px; }
         .admin-actions input:focus { outline: none; border-color: #ff6b6b; }
         .admin-actions button { padding: 12px 24px; border: none; border-radius: 10px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
         .admin-actions button:hover { transform: scale(1.02); }
-        .logs-container { margin-top: 20px; background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; }
+        .logs-container { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; }
         .logs-container .log-entry { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; color: #aaa; }
         .logs-container .log-entry strong { color: #fff; }
         
@@ -138,7 +140,7 @@
         .join-container .share-buttons button { padding: 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; cursor: pointer; transition: all 0.3s ease; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .join-container .share-buttons button:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
         .join-container .btn-request { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
-        .join-container .btn-request:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3); }
+        .join-container .btn-request:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         
         /* Footer */
         .footer { background: #0a0a0a; padding: 30px 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.03); margin-top: 60px; }
@@ -157,6 +159,9 @@
         .toast.error i { color: #ff6b6b; }
         
         .hidden { display: none !important; }
+        .loading { text-align: center; padding: 60px 20px; color: #666; }
+        .loading i { font-size: 3rem; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         
         @media (max-width: 768px) {
             .nav-container { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -164,16 +169,10 @@
             .nav-links a { font-size: 0.8rem; padding: 6px 12px; }
             .video-grid { grid-template-columns: 1fr; }
             .auth-box { padding: 24px; }
-            .player-container { margin: 10px; }
-            .player-actions { justify-content: center; }
+            .heard-box .options { grid-template-columns: 1fr; }
             .join-container .share-buttons { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
-            .heard-box .options { grid-template-columns: 1fr; }
         }
-        
-        .loading { text-align: center; padding: 60px 20px; color: #666; }
-        .loading i { font-size: 3rem; animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -187,12 +186,10 @@
     <nav class="navbar">
         <div class="nav-container">
             <a href="#" onclick="showHome()" class="nav-brand">
-                <i class="fas fa-play-circle"></i>
-                AKABAKUZE
+                <i class="fas fa-play-circle"></i> AKABAKUZE
             </a>
             <div class="nav-links">
                 <a href="#" onclick="showHome()" class="active" id="navHome"><i class="fas fa-home"></i> Home</a>
-                <a href="#" onclick="showTrending()" id="navTrending"><i class="fas fa-fire"></i> Trending</a>
                 <a href="#" onclick="showUpload()" id="navUpload" style="display:none;"><i class="fas fa-upload"></i> Upload</a>
                 <a href="#" onclick="showAdmin()" id="navAdmin" style="display:none;"><i class="fas fa-crown"></i> Admin</a>
                 <a href="#" onclick="toggleAuth()" id="navAuth"><i class="fas fa-user"></i> <span id="authText">Login</span></a>
@@ -226,40 +223,32 @@
         </div>
     </div>
 
-    <!-- Heard From Overlay (Shows after login) -->
+    <!-- Heard From Modal -->
     <div class="heard-overlay" id="heardOverlay">
         <div class="heard-box">
             <h2>👋 Welcome!</h2>
             <p class="sub">How did you hear about AKABAKUZE?</p>
             <div class="options" id="heardOptions">
                 <div class="option" data-value="friend" onclick="selectHeard('friend')">
-                    <i class="fas fa-user-friends"></i>
-                    By Friend
+                    <i class="fas fa-user-friends"></i> By Friend
                 </div>
                 <div class="option" data-value="self" onclick="selectHeard('self')">
-                    <i class="fas fa-search"></i>
-                    Self Research
+                    <i class="fas fa-search"></i> Self Research
                 </div>
                 <div class="option" data-value="facebook" onclick="selectHeard('facebook')">
-                    <i class="fab fa-facebook"></i>
-                    On Facebook
+                    <i class="fab fa-facebook"></i> On Facebook
                 </div>
                 <div class="option" data-value="instagram" onclick="selectHeard('instagram')">
-                    <i class="fab fa-instagram"></i>
-                    On Instagram
+                    <i class="fab fa-instagram"></i> On Instagram
                 </div>
                 <div class="option" data-value="twitter" onclick="selectHeard('twitter')">
-                    <i class="fab fa-twitter"></i>
-                    On Twitter
+                    <i class="fab fa-twitter"></i> On Twitter
                 </div>
                 <div class="option" data-value="other" onclick="selectHeard('other')">
-                    <i class="fas fa-ellipsis-h"></i>
-                    Other Media
+                    <i class="fas fa-ellipsis-h"></i> Other Media
                 </div>
             </div>
-            <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">
-                Continue →
-            </button>
+            <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">Continue →</button>
         </div>
     </div>
 
@@ -272,8 +261,8 @@
                 <h2 id="videoTitle">Video Title</h2>
                 <p class="desc" id="videoDesc">Description</p>
                 <div class="player-actions">
-                    <button onclick="likeVideo()" id="likeBtn"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
-                    <button onclick="dislikeVideo()" id="dislikeBtn"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
+                    <button onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
+                    <button onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
                     <button onclick="shareVideo()"><i class="fas fa-share"></i> Share</button>
                     <button onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
                 </div>
@@ -291,12 +280,14 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <!-- Home -->
         <div id="homeContent">
             <div class="video-grid" id="videoGrid">
                 <div class="loading"><i class="fas fa-spinner"></i><br>Loading videos...</div>
             </div>
         </div>
 
+        <!-- Upload -->
         <div id="uploadContent" class="hidden">
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
@@ -307,7 +298,7 @@
                     <div class="file-input" onclick="document.getElementById('videoFile').click()">
                         <i class="fas fa-video" style="font-size:2rem;color:#ff6b6b;"></i>
                         <p style="margin-top:8px;">Click to select video file</p>
-                        <small style="color:#666;">MP4, AVI, MOV, etc. (Max 500MB)</small>
+                        <small style="color:#666;">MP4, AVI, MOV (Max 500MB)</small>
                         <input type="file" id="videoFile" accept="video/*" style="display:none;" required>
                     </div>
                     <div class="file-input" onclick="document.getElementById('thumbFile').click()">
@@ -321,6 +312,7 @@
             </div>
         </div>
 
+        <!-- Admin -->
         <div id="adminContent" class="hidden">
             <div class="admin-container">
                 <h2>👑 Admin Dashboard</h2>
@@ -333,13 +325,14 @@
                         <button type="submit">Create Admin</button>
                     </form>
                 </div>
-                <div class="logs-container" id="logsContainer">
+                <div class="logs-container">
                     <h3 style="margin-bottom:12px;">📋 Recent Activity</h3>
                     <div id="logsList">Loading...</div>
                 </div>
             </div>
         </div>
 
+        <!-- Join Us -->
         <div id="joinContent" class="hidden">
             <div class="join-container">
                 <h2>🤝 Join Us & Make Money!</h2>
@@ -364,6 +357,7 @@
         </div>
     </main>
 
+    <!-- Footer -->
     <footer class="footer">
         <p>&copy; 2024 AKABAKUZE. All rights reserved.</p>
         <div class="social">
@@ -380,9 +374,8 @@
         let currentVideo = null;
         let isLogin = true;
         let selectedHeard = null;
-        let pendingUserData = null;
 
-        // Toast
+        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = toast.querySelector('i');
@@ -415,9 +408,14 @@
 
         async function handleAuth(e) {
             e.preventDefault();
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const secretCode = document.getElementById('secretCode').value;
+            const secretCode = document.getElementById('secretCode').value.trim();
+
+            if (!username || !password || !secretCode) {
+                showToast('All fields are required', 'error');
+                return;
+            }
 
             try {
                 const endpoint = isLogin ? '/auth/login' : '/auth/register';
@@ -431,27 +429,39 @@
                         heardFrom: 'pending' 
                     })
                 });
+
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Authentication failed');
                 
+                if (!res.ok) {
+                    throw new Error(data.error || 'Authentication failed');
+                }
+
                 localStorage.setItem('token', data.token);
                 currentUser = data.user;
                 toggleAuth();
-                
-                // Show "How did you hear about us?" modal
+
+                // Show "How did you hear about us?" if not answered
                 if (!currentUser.heardFrom || currentUser.heardFrom === 'pending' || currentUser.heardFrom === 'not_specified') {
                     showHeardModal();
                 } else {
                     updateUI();
                     loadVideos();
-                    showToast('Welcome back, ' + username + '!');
+                    showToast(isLogin ? 'Welcome back, ' + username + '!' : 'Account created successfully!');
                 }
             } catch (error) {
                 showToast(error.message, 'error');
             }
         }
 
-        // ============ HEARD FROM MODAL ============
+        function logout() {
+            localStorage.removeItem('token');
+            currentUser = null;
+            updateUI();
+            loadVideos();
+            showToast('Logged out successfully');
+        }
+
+        // ============ HEARD FROM ============
         function showHeardModal() {
             document.getElementById('heardOverlay').classList.add('show');
             selectedHeard = null;
@@ -469,7 +479,7 @@
 
         async function submitHeard() {
             if (!selectedHeard) return;
-            
+
             try {
                 const res = await fetch(API + '/auth/heard-from', {
                     method: 'POST',
@@ -479,9 +489,9 @@
                     },
                     body: JSON.stringify({ heardFrom: selectedHeard })
                 });
-                
+
                 if (!res.ok) throw new Error('Failed to update');
-                
+
                 document.getElementById('heardOverlay').classList.remove('show');
                 currentUser.heardFrom = selectedHeard;
                 updateUI();
@@ -492,16 +502,7 @@
             }
         }
 
-        // ============ LOGOUT ============
-        function logout() {
-            localStorage.removeItem('token');
-            currentUser = null;
-            updateUI();
-            loadVideos();
-            showToast('Logged out');
-        }
-
-        // ============ UPDATE UI ============
+        // ============ UI UPDATE ============
         function updateUI() {
             const authText = document.getElementById('authText');
             const navAuth = document.getElementById('navAuth');
@@ -509,11 +510,14 @@
             const navAdmin = document.getElementById('navAdmin');
 
             if (currentUser) {
-                authText.textContent = 'Logout (' + currentUser.username + ')';
+                authText.textContent = 'Logout';
                 navAuth.onclick = logout;
                 if (['admin', 'super_admin'].includes(currentUser.role)) {
                     navUpload.style.display = 'inline';
                     navAdmin.style.display = 'inline';
+                } else {
+                    navUpload.style.display = 'none';
+                    navAdmin.style.display = 'none';
                 }
             } else {
                 authText.textContent = 'Login';
@@ -529,6 +533,7 @@
                 const res = await fetch(API + '/videos');
                 const videos = await res.json();
                 const grid = document.getElementById('videoGrid');
+
                 if (!videos.length) {
                     grid.innerHTML = `
                         <div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:#666;">
@@ -539,6 +544,7 @@
                     `;
                     return;
                 }
+
                 grid.innerHTML = videos.map(v => `
                     <div class="video-card" onclick="playVideo(${v.id})">
                         <img src="${v.thumbnail_url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%231a1a1a"/%3E%3Ctext x="200" y="110" text-anchor="middle" fill="%23666" font-size="16"%3ENo Thumbnail%3C/text%3E%3C/svg%3E'}" 
@@ -571,22 +577,22 @@
                 const res = await fetch(API + '/videos/' + id);
                 const data = await res.json();
                 currentVideo = data;
-                
+
                 const overlay = document.getElementById('playerOverlay');
                 overlay.classList.add('show');
                 document.body.style.overflow = 'hidden';
-                
+
                 const video = document.getElementById('mainVideo');
                 video.src = data.video_url;
                 video.load();
                 video.play().catch(() => {});
-                
+
                 document.getElementById('videoTitle').textContent = data.title;
                 document.getElementById('videoDesc').textContent = data.description || 'No description';
                 document.getElementById('likeCount').textContent = data.likes || 0;
                 document.getElementById('dislikeCount').textContent = data.dislikes || 0;
                 document.getElementById('commentCount').textContent = data.comments?.length || 0;
-                
+
                 displayComments(data.comments || []);
             } catch (error) {
                 showToast('Failed to load video: ' + error.message, 'error');
@@ -626,7 +632,7 @@
             const input = document.getElementById('commentInput');
             const comment = input.value.trim();
             if (!comment) return;
-            
+
             try {
                 const res = await fetch(API + '/videos/' + currentVideo.id + '/comment', {
                     method: 'POST',
@@ -636,7 +642,12 @@
                     },
                     body: JSON.stringify({ comment })
                 });
-                if (!res.ok) throw new Error('Failed to add comment');
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to add comment');
+                }
+
                 input.value = '';
                 const videoRes = await fetch(API + '/videos/' + currentVideo.id);
                 const videoData = await videoRes.json();
@@ -669,10 +680,12 @@
                     },
                     body: JSON.stringify({ action })
                 });
+
                 if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.error || 'Failed');
                 }
+
                 const count = document.getElementById(action + 'Count');
                 count.textContent = parseInt(count.textContent) + 1;
                 showToast('Video ' + action + 'd!');
@@ -688,7 +701,9 @@
                 try {
                     await navigator.share({ title: currentVideo.title, url });
                     await fetch(API + '/videos/' + currentVideo.id + '/share', { method: 'POST' });
-                } catch (e) { if (e.name !== 'AbortError') copyLink(url); }
+                } catch (e) {
+                    if (e.name !== 'AbortError') copyLink(url);
+                }
             } else {
                 copyLink(url);
             }
@@ -712,16 +727,21 @@
         async function uploadVideo(e) {
             e.preventDefault();
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-                showToast('Only admins can upload', 'error');
+                showToast('Only admins can upload videos', 'error');
                 return;
             }
-            
+
             const formData = new FormData();
             formData.append('title', document.getElementById('videoTitle').value);
             formData.append('description', document.getElementById('videoDesc').value);
             const videoFile = document.getElementById('videoFile').files[0];
             const thumbFile = document.getElementById('thumbFile').files[0];
-            if (!videoFile) { showToast('Please select a video', 'error'); return; }
+
+            if (!videoFile) {
+                showToast('Please select a video file', 'error');
+                return;
+            }
+
             formData.append('video', videoFile);
             if (thumbFile) formData.append('thumbnail', thumbFile);
 
@@ -731,8 +751,10 @@
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                     body: formData
                 });
+
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Upload failed');
+
                 showToast('Video uploaded successfully!');
                 document.getElementById('uploadForm').reset();
                 showHome();
@@ -745,49 +767,74 @@
         // ============ ADMIN ============
         async function showAdmin() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-                showToast('Access denied', 'error');
+                showToast('Access denied. Admin only.', 'error');
                 return;
             }
+
             hideAll();
             document.getElementById('adminContent').classList.remove('hidden');
             document.getElementById('navAdmin').classList.add('active');
-            
+
             try {
                 const res = await fetch(API + '/admin/stats', {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
                 });
+
+                if (!res.ok) throw new Error('Failed to load admin data');
+
                 const data = await res.json();
-                
+
                 document.getElementById('statsGrid').innerHTML = `
-                    <div class="stat-card"><div class="number">${data.stats.total_visits || 0}</div><div class="label">Total Visits</div></div>
-                    <div class="stat-card"><div class="number">${data.userCount || 0}</div><div class="label">Total Users</div></div>
-                    <div class="stat-card"><div class="number">${data.videoCount || 0}</div><div class="label">Total Videos</div></div>
-                    <div class="stat-card"><div class="number">${data.stats.total_views || 0}</div><div class="label">Total Views</div></div>
+                    <div class="stat-card">
+                        <div class="number">${data.stats?.total_visits || 0}</div>
+                        <div class="label">Total Visits</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.userCount || 0}</div>
+                        <div class="label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.videoCount || 0}</div>
+                        <div class="label">Total Videos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.stats?.total_views || 0}</div>
+                        <div class="label">Total Views</div>
+                    </div>
                 `;
-                
-                document.getElementById('logsList').innerHTML = data.recentLogs.length ? 
-                    data.recentLogs.map(l => `
+
+                const logsList = document.getElementById('logsList');
+                if (data.recentLogs && data.recentLogs.length) {
+                    logsList.innerHTML = data.recentLogs.map(l => `
                         <div class="log-entry">
                             <strong>${l.username || 'Unknown'}</strong> - 
                             ${l.action} - 
                             <span style="color:#666;">${new Date(l.created_at).toLocaleString()}</span>
                         </div>
-                    `).join('') : 
-                    '<p style="color:#666;padding:10px 0;">No logs available</p>';
+                    `).join('');
+                } else {
+                    logsList.innerHTML = '<p style="color:#666;padding:10px 0;">No logs available</p>';
+                }
             } catch (error) {
-                showToast('Failed to load admin data', 'error');
+                showToast('Failed to load admin data: ' + error.message, 'error');
             }
         }
 
         async function createAdmin(e) {
             e.preventDefault();
             if (!currentUser || currentUser.role !== 'super_admin') {
-                showToast('Only super admin can create admins', 'error');
+                showToast('Only Super Admin can create admins', 'error');
                 return;
             }
-            const username = document.getElementById('newAdminUser').value;
+
+            const username = document.getElementById('newAdminUser').value.trim();
             const password = document.getElementById('newAdminPass').value;
-            
+
+            if (!username || !password) {
+                showToast('Username and password required', 'error');
+                return;
+            }
+
             try {
                 const res = await fetch(API + '/admin/create-admin', {
                     method: 'POST',
@@ -797,8 +844,10 @@
                     },
                     body: JSON.stringify({ username, password })
                 });
+
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed');
+                if (!res.ok) throw new Error(data.error || 'Failed to create admin');
+
                 showToast('Admin created successfully!');
                 document.getElementById('newAdminUser').value = '';
                 document.getElementById('newAdminPass').value = '';
@@ -815,11 +864,9 @@
             loadVideos();
         }
 
-        function showTrending() { showHome(); }
-
         function showUpload() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-                showToast('Access denied', 'error');
+                showToast('Access denied. Admin only.', 'error');
                 return;
             }
             hideAll();
@@ -854,7 +901,10 @@
             navigator.clipboard.writeText(window.location.href).then(() => showToast('Link copied!'));
         }
         function requestPro() {
-            if (!currentUser) { showToast('Please login first', 'error'); return; }
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                return;
+            }
             showToast('Request submitted! Admin will review your account.');
         }
 
@@ -863,18 +913,25 @@
         if (token) {
             fetch(API + '/auth/me', {
                 headers: { 'Authorization': 'Bearer ' + token }
-            }).then(res => res.json()).then(data => {
+            })
+            .then(res => res.json())
+            .then(data => {
                 if (data.user) {
                     currentUser = data.user;
                     updateUI();
-                    // Check if user needs to answer "How did you hear about us?"
                     if (!currentUser.heardFrom || currentUser.heardFrom === 'pending' || currentUser.heardFrom === 'not_specified') {
                         showHeardModal();
                     } else {
                         loadVideos();
                     }
                 }
-            }).catch(() => localStorage.removeItem('token'));
+            })
+            .catch(() => {
+                localStorage.removeItem('token');
+                loadVideos();
+            });
+        } else {
+            loadVideos();
         }
 
         // Check for video in URL
@@ -882,8 +939,10 @@
         const vid = params.get('v');
         if (vid) setTimeout(() => playVideo(vid), 1000);
 
-        if (!token) loadVideos();
         console.log('🚀 AKABAKUZE loaded!');
+        console.log('👑 Super Admin: OWNER_MPC');
+        console.log('🔑 Password: 08800+_+Owner!');
+        console.log('🔐 Secret: ADMIN_SECRET_2024');
     </script>
 </body>
 </html>
