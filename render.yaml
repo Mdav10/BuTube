@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: akabakuze
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_Cb7XtKr0BIoN@ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: OWNER_MPC
+      - key: ADMIN_PASSWORD
+        value: 08800+_+Owner!

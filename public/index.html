@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AKABAKUZE - Share, Watch, Connect</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Scrolling announcement -->
+    <div class="scrolling-bar">
+        <div class="scrolling-text">
+            ⭐ PLEASE SHARE OUR WEBSITE, THAT'S ONLY WHAT WE WANT FOR YOU. ⭐
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-play-circle"></i>
+                AKABAKUZE
+            </div>
+            <div class="nav-links">
+                <a href="#" onclick="showHome()"><i class="fas fa-home"></i> Home</a>
+                <a href="#" onclick="showTrending()"><i class="fas fa-fire"></i> Trending</a>
+                <a href="#" onclick="showUpload()" id="uploadLink" style="display:none;">
+                    <i class="fas fa-upload"></i> Upload
+                </a>
+                <a href="#" onclick="showAdmin()" id="adminLink" style="display:none;">
+                    <i class="fas fa-crown"></i> Admin
+                </a>
+                <a href="#" onclick="toggleAuth()" id="authLink">
+                    <i class="fas fa-user"></i> <span id="authText">Login</span>
+                </a>
+                <a href="#" onclick="showJoinUs()" class="join-btn">
+                    <i class="fas fa-handshake"></i> Join Us & Make Money!
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="authContainer" class="auth-container" style="display:none;">
+            <div class="auth-box">
+                <h2 id="authTitle">Login</h2>
+                <form id="authForm" onsubmit="handleAuth(event)">
+                    <input type="text" id="username" placeholder="Username" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <input type="text" id="secretCode" placeholder="Secret Code" required>
+                    <select id="heardFrom" style="display:none;">
+                        <option value="friend">By Friend</option>
+                        <option value="self">Self Research</option>
+                        <option value="facebook">On Facebook</option>
+                        <option value="instagram">On Instagram</option>
+                        <option value="other">Other Media</option>
+                    </select>
+                    <button type="submit" id="authSubmit">Login</button>
+                </form>
+                <p>
+                    <span id="toggleAuthText">Don't have an account?</span>
+                    <a href="#" onclick="toggleAuthMode()" id="toggleAuthLink">Register</a>
+                </p>
+            </div>
+        </div>
+
+        <div id="videoContainer" class="video-container">
+            <div id="videoGrid" class="video-grid"></div>
+        </div>
+
+        <div id="videoPlayer" style="display:none;" class="video-player">
+            <div class="player-container">
+                <div class="close-player" onclick="closePlayer()">&times;</div>
+                <video id="mainVideo" controls style="width:100%; max-height:500px;"></video>
+                <div class="video-info">
+                    <h2 id="videoTitle"></h2>
+                    <p id="videoDescription"></p>
+                    <div class="video-actions">
+                        <button onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
+                        <button onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
+                        <button onclick="shareVideo()"><i class="fas fa-share"></i> Share</button>
+                        <button onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
+                    </div>
+                    <div class="comments-section">
+                        <h3>Comments</h3>
+                        <div id="commentsList"></div>
+                        <div class="add-comment">
+                            <input type="text" id="commentInput" placeholder="Add a comment...">
+                            <button onclick="addComment()">Post</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="uploadContainer" style="display:none;" class="upload-container">
+            <h2>Upload Video</h2>
+            <form id="uploadForm" onsubmit="uploadVideo(event)">
+                <input type="text" id="videoTitleInput" placeholder="Video Title" required>
+                <textarea id="videoDescriptionInput" placeholder="Video Description"></textarea>
+                <input type="file" id="videoFile" accept="video/*" required>
+                <input type="file" id="thumbnailFile" accept="image/*">
+                <button type="submit">Upload Video</button>
+            </form>
+        </div>
+
+        <div id="adminContainer" style="display:none;" class="admin-container">
+            <h2>Admin Dashboard</h2>
+            <div id="adminStats" class="admin-stats"></div>
+            <div id="adminLogs" class="admin-logs"></div>
+            <div class="admin-actions">
+                <h3>Create Admin Account</h3>
+                <form onsubmit="createAdmin(event)">
+                    <input type="text" id="newAdminUsername" placeholder="New Admin Username" required>
+                    <input type="password" id="newAdminPassword" placeholder="New Admin Password" required>
+                    <button type="submit">Create Admin</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="joinUsContainer" style="display:none;" class="join-us-container">
+            <h2>Join Us & Make Money!</h2>
+            <div class="join-content">
+                <p>To become a Pro User and start uploading videos, you must:</p>
+                <ol>
+                    <li>Share this website with 20 people</li>
+                    <li>Each person must visit the website</li>
+                    <li>After sharing, request your Pro account</li>
+                </ol>
+                <div class="share-buttons">
+                    <button onclick="shareToFacebook()"><i class="fab fa-facebook"></i> Share on Facebook</button>
+                    <button onclick="shareToTwitter()"><i class="fab fa-twitter"></i> Share on Twitter</button>
+                    <button onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
+                    <button onclick="copyLink()"><i class="fas fa-copy"></i> Copy Link</button>
+                </div>
+                <button onclick="requestProAccount()" class="request-btn">Request Pro Account</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 AKABAKUZE. All rights reserved.</p>
+        <div class="social-links">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

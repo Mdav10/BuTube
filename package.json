@@ -1,0 +1,27 @@
+{
+  "name": "akabakuze",
+  "version": "1.0.0",
+  "description": "AKABAKUZE - YouTube-like platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
+    "helmet": "^7.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express-rate-limit": "^6.7.0",
+    "xss": "^1.0.14",
+    "csurf": "^1.11.0",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
