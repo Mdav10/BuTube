@@ -122,17 +122,23 @@ async function initDatabase() {
       );
     `);
 
-    // Create super admin
+    // Create super admin with proper hashing
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+    
     await pool.query(
-      `INSERT INTO users (username, password, secret_code, role) 
-       VALUES ($1, $2, $3, 'super_admin') ON CONFLICT (username) DO NOTHING`,
+      `INSERT INTO users (username, password, secret_code, role, heard_from) 
+       VALUES ($1, $2, $3, 'super_admin', 'admin_created') 
+       ON CONFLICT (username) DO UPDATE SET 
+       password = EXCLUDED.password, 
+       secret_code = EXCLUDED.secret_code`,
       ['OWNER_MPC', hashedPassword, hashedSecret]
     );
+
     await pool.query(`INSERT INTO website_stats (total_visits, total_users, total_videos) SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`);
 
     console.log('✅ Database initialized');
+    console.log('✅ Super Admin created: OWNER_MPC');
   } catch (error) {
     console.error('❌ Database error:', error.message);
   }
@@ -144,7 +150,7 @@ const authenticate = async (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'akabakuze_secret');
-    const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
+    const user = await pool.query('SELECT id, username, role, heard_from FROM users WHERE id = $1 AND is_active = true', [decoded.userId]);
     if (!user.rows.length) return res.status(401).json({ error: 'Invalid token' });
     req.user = user.rows[0];
     next();
@@ -160,84 +166,200 @@ const authorize = (...roles) => (req, res, next) => {
   next();
 };
 
-// API Routes
+// ============== API ROUTES ==============
+
+// REGISTER - Fixed
 app.post('/api/auth/register', async (req, res) => {
   try {
+    console.log('📝 Registration attempt:', req.body.username);
     const { username, password, secretCode, heardFrom } = req.body;
+    
     if (!username || !password || !secretCode) {
-      return res.status(400).json({ error: 'All fields required' });
+      return res.status(400).json({ error: 'All fields are required' });
     }
+    
+    // Check if user exists
     const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (existing.rows.length) return res.status(400).json({ error: 'Username exists' });
-
+    if (existing.rows.length) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Hash password and secret
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedSecret = await bcrypt.hash(secretCode, 10);
+    
+    // Insert user
     const result = await pool.query(
       `INSERT INTO users (username, password, secret_code, heard_from, role) 
-       VALUES ($1, $2, $3, $4, 'user') RETURNING id, username, role`,
-      [username, hashedPassword, hashedSecret, heardFrom]
+       VALUES ($1, $2, $3, $4, 'user') 
+       RETURNING id, username, role, heard_from`,
+      [username, hashedPassword, hashedSecret, heardFrom || 'not_specified']
     );
+    
+    const user = result.rows[0];
+    
+    // Update stats
     await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
     
-    const token = jwt.sign(
-      { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
-      process.env.JWT_SECRET || 'akabakuze_secret',
-      { expiresIn: '7d' }
-    );
-    res.json({ token, user: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { username, password, secretCode } = req.body;
-    if (!username || !password || !secretCode) {
-      return res.status(400).json({ error: 'All fields required' });
+    // Log registration
+    try {
+      await pool.query(
+        `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
+         VALUES ($1, $2, $3, 'register', $4)`,
+        [user.id, req.ip || 'unknown', req.headers['user-agent'] || 'unknown', JSON.stringify({ heardFrom })]
+      );
+    } catch (logError) {
+      console.error('Log error:', logError.message);
     }
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (!result.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
-
-    const user = result.rows[0];
-    const validPassword = await bcrypt.compare(password, user.password);
-    const validSecret = await bcrypt.compare(secretCode, user.secret_code);
-    if (!validPassword || !validSecret) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
+    
+    // Generate token
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET || 'akabakuze_secret',
       { expiresIn: '7d' }
     );
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    
+    console.log('✅ User registered:', username);
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role,
+        heardFrom: user.heard_from 
+      } 
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ error: 'Registration failed: ' + error.message });
   }
 });
 
-app.get('/api/auth/me', authenticate, async (req, res) => {
-  res.json({ user: req.user });
+// LOGIN - Fixed
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    console.log('🔑 Login attempt:', req.body.username);
+    const { username, password, secretCode } = req.body;
+    
+    if (!username || !password || !secretCode) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    // Get user
+    const result = await pool.query('SELECT * FROM users WHERE username = $1 AND is_active = true', [username]);
+    if (!result.rows.length) {
+      console.log('❌ User not found:', username);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const user = result.rows[0];
+    console.log('👤 User found:', user.username, 'Role:', user.role);
+    
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      console.log('❌ Invalid password for:', username);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Verify secret code
+    const validSecret = await bcrypt.compare(secretCode, user.secret_code);
+    if (!validSecret) {
+      console.log('❌ Invalid secret code for:', username);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Update stats
+    await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
+    
+    // Log login
+    try {
+      await pool.query(
+        `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
+         VALUES ($1, $2, $3, 'login', $4)`,
+        [user.id, req.ip || 'unknown', req.headers['user-agent'] || 'unknown', JSON.stringify({ success: true })]
+      );
+    } catch (logError) {
+      console.error('Log error:', logError.message);
+    }
+    
+    // Generate token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET || 'akabakuze_secret',
+      { expiresIn: '7d' }
+    );
+    
+    console.log('✅ Login successful:', username);
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role,
+        heardFrom: user.heard_from 
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ error: 'Login failed: ' + error.message });
+  }
 });
 
+// GET USER - Fixed
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    res.json({ user: req.user });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+// CREATE ADMIN - Fixed
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedSecret = await bcrypt.hash('ADMIN_' + Date.now(), 10);
+    
     const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, role) VALUES ($1, $2, $3, 'admin') RETURNING id, username, role`,
+      `INSERT INTO users (username, password, secret_code, role, heard_from) 
+       VALUES ($1, $2, $3, 'admin', 'admin_created') 
+       RETURNING id, username, role`,
       [username, hashedPassword, hashedSecret]
     );
-    res.json({ message: 'Admin created', admin: result.rows[0] });
+    
+    res.json({ message: 'Admin created successfully', admin: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create admin' });
+    res.status(500).json({ error: 'Failed to create admin: ' + error.message });
   }
 });
 
+// UPDATE USER HEARD_FROM - NEW
+app.post('/api/auth/heard-from', authenticate, async (req, res) => {
+  try {
+    const { heardFrom } = req.body;
+    if (!heardFrom) {
+      return res.status(400).json({ error: 'Please select how you heard about us' });
+    }
+    
+    await pool.query(
+      'UPDATE users SET heard_from = $1 WHERE id = $2',
+      [heardFrom, req.user.id]
+    );
+    
+    req.user.heard_from = heardFrom;
+    res.json({ message: 'Updated successfully', heardFrom });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update: ' + error.message });
+  }
+});
+
+// VIDEO UPLOAD
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -263,6 +385,7 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
+// GET VIDEOS
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -276,6 +399,7 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
+// GET VIDEO BY ID
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
@@ -298,6 +422,7 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+// LIKE/DISLIKE
 app.post('/api/videos/:id/like', authenticate, async (req, res) => {
   try {
     const { action } = req.body;
@@ -323,6 +448,7 @@ app.post('/api/videos/:id/like', authenticate, async (req, res) => {
   }
 });
 
+// COMMENT
 app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
   try {
     const { comment } = req.body;
@@ -337,6 +463,7 @@ app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
   }
 });
 
+// SHARE
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     await pool.query('UPDATE videos SET share_count = share_count + 1 WHERE id = $1', [req.params.id]);
@@ -346,6 +473,7 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
+// ADMIN STATS
 app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -366,12 +494,12 @@ app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), asy
   }
 });
 
+// DELETE VIDEO
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const video = await pool.query('SELECT video_url, thumbnail_url FROM videos WHERE id = $1', [req.params.id]);
     if (!video.rows.length) return res.status(404).json({ error: 'Video not found' });
     
-    // Delete files
     ['video_url', 'thumbnail_url'].forEach(key => {
       if (video.rows[0][key]) {
         const filePath = path.join(__dirname, video.rows[0][key]);
