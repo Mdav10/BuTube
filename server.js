@@ -107,11 +107,12 @@ async function initDatabase() {
       )
     `);
 
+    // ===== FIXED: COMMENTS TABLE WITH USERNAME COLUMN =====
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
-        username VARCHAR(255),
+        username VARCHAR(255) NOT NULL,
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -399,7 +400,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-// ============ ADMIN ONLY ROUTES (Their own videos) ============
+// ============ ADMIN ONLY ROUTES ============
 app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videos = await pool.query(
@@ -534,8 +535,9 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
     
+    // ===== FIXED: GET COMMENTS WITH USERNAME =====
     const commentsResult = await pool.query(
-      'SELECT * FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
+      'SELECT id, username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
     );
     
@@ -560,7 +562,6 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
-    // SuperAdmin can edit ANY video, Admin can only edit their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only edit your own videos' });
     }
@@ -586,7 +587,6 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
     const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
-    // SuperAdmin can delete ANY video, Admin can only delete their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
@@ -626,6 +626,7 @@ app.post('/api/videos/:id/like', async (req, res) => {
   }
 });
 
+// ===== FIXED: COMMENT ROUTE =====
 app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -635,8 +636,9 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       return res.status(400).json({ error: 'Name and comment required' });
     }
 
+    // Insert comment with username
     const result = await pool.query(
-      'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING *',
+      'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING id, username, comment, created_at',
       [videoId, username.trim(), comment.trim()]
     );
     
@@ -644,6 +646,7 @@ app.post('/api/videos/:id/comment', async (req, res) => {
     
     res.json({ success: true, comment: result.rows[0] });
   } catch (error) {
+    console.error('Comment error:', error);
     res.status(500).json({ error: 'Failed to add comment: ' + error.message });
   }
 });

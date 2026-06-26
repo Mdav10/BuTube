@@ -87,17 +87,87 @@
         .player-actions button:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
         .close-player { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 2rem; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; transition: all 0.3s ease; z-index: 10; }
         .close-player:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
+        
+        /* ===== FIXED: COMMENTS SECTION ===== */
         .comments-section { margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; }
         .comments-section h3 { font-size: 1.1rem; margin-bottom: 16px; }
         .comment { background: rgba(255,255,255,0.03); padding: 14px; border-radius: 12px; margin-bottom: 10px; }
         .comment .username { font-weight: 600; color: #ff6b6b; margin-bottom: 4px; }
         .comment .text { color: #ccc; font-size: 0.95rem; }
         .comment .time { color: #666; font-size: 0.75rem; margin-top: 4px; }
-        .add-comment { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-        .add-comment input { flex: 1; min-width: 120px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; }
-        .add-comment input:focus { outline: none; border-color: #ff6b6b; }
-        .add-comment button { padding: 12px 24px; border: none; border-radius: 50px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .add-comment button:hover { transform: scale(1.05); }
+        
+        /* ===== FIXED: ADD COMMENT ===== */
+        .add-comment { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 16px; 
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .add-comment .comment-input-wrapper {
+            flex: 1;
+            min-width: 150px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .add-comment .comment-input-wrapper input {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            font-size: 0.95rem;
+        }
+        .add-comment .comment-input-wrapper input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+        }
+        .add-comment .comment-input-wrapper input::placeholder {
+            color: #555;
+        }
+        .add-comment .comment-name-input {
+            min-width: 120px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            font-size: 0.95rem;
+            flex: 0 0 auto;
+        }
+        .add-comment .comment-name-input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+        }
+        .add-comment .comment-name-input::placeholder {
+            color: #555;
+        }
+        .add-comment .btn-post {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-size: 0.95rem;
+            flex: 0 0 auto;
+        }
+        .add-comment .btn-post:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(255,107,107,0.3);
+        }
+        .add-comment .btn-post:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         /* ===== UPLOAD CONTAINER ===== */
         .upload-container { 
@@ -281,8 +351,33 @@
             .join-container .share-buttons { grid-template-columns: 1fr; }
             .player-actions { justify-content: center; }
             .upload-container { padding: 24px; }
-            .add-comment { flex-direction: column; }
-            .add-comment input { width: 100%; }
+            /* ===== FIXED: COMMENT MOBILE ===== */
+            .add-comment { 
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .add-comment .comment-input-wrapper {
+                flex-direction: column;
+                width: 100%;
+            }
+            .add-comment .comment-input-wrapper input {
+                width: 100%;
+                min-width: unset;
+                border-radius: 12px;
+            }
+            .add-comment .comment-name-input {
+                width: 100%;
+                min-width: unset;
+                border-radius: 12px;
+            }
+            .add-comment .btn-post {
+                width: 100%;
+                padding: 14px;
+                border-radius: 12px;
+                font-size: 1rem;
+                flex: unset;
+            }
             .edit-modal .modal-box { padding: 24px; margin: 10px; }
             .edit-modal .modal-box .modal-actions { flex-direction: column; }
             .admin-section .list-item { flex-direction: column; align-items: flex-start; }
@@ -390,13 +485,16 @@
                     <button onclick="shareVideo()"><i class="fas fa-share"></i> Share</button>
                     <button onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
                 </div>
+                <!-- ===== FIXED: COMMENTS SECTION ===== -->
                 <div class="comments-section">
                     <h3>Comments <span style="color:#666;font-weight:400;" id="commentCount">0</span></h3>
                     <div id="commentsList"></div>
                     <div class="add-comment">
-                        <input type="text" id="commentNameInput" placeholder="Your name" maxlength="50">
-                        <input type="text" id="commentInput" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') addComment()">
-                        <button onclick="addComment()">Post</button>
+                        <div class="comment-input-wrapper">
+                            <input type="text" class="comment-name-input" id="commentNameInput" placeholder="Your name" maxlength="50">
+                            <input type="text" id="commentInput" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') addComment()">
+                        </div>
+                        <button class="btn-post" onclick="addComment()">Post</button>
                     </div>
                 </div>
             </div>
@@ -806,6 +904,7 @@
                 document.getElementById('dislikeCount').textContent = data.dislikes || 0;
                 document.getElementById('commentCount').textContent = data.comments?.length || 0;
 
+                // ===== FIXED: Display comments with username =====
                 displayComments(data.comments || []);
                 
                 document.getElementById('commentNameInput').value = currentUser ? currentUser.username : '';
@@ -824,7 +923,7 @@
             video.src = '';
         }
 
-        // ===== COMMENTS =====
+        // ===== FIXED: Display comments =====
         function displayComments(comments) {
             const list = document.getElementById('commentsList');
             if (!comments || !comments.length) {
@@ -840,6 +939,7 @@
             `).join('');
         }
 
+        // ===== FIXED: Add comment =====
         async function addComment() {
             const nameInput = document.getElementById('commentNameInput');
             const commentInput = document.getElementById('commentInput');
@@ -858,7 +958,7 @@
                 return;
             }
 
-            const postBtn = document.querySelector('.add-comment button');
+            const postBtn = document.querySelector('.btn-post');
             postBtn.disabled = true;
             postBtn.textContent = 'Posting...';
 
@@ -877,6 +977,7 @@
                 const data = await res.json();
                 commentInput.value = '';
                 
+                // Refresh comments
                 const videoRes = await fetch(API + '/videos/' + currentVideo.id);
                 const videoData = await videoRes.json();
                 displayComments(videoData.comments || []);
@@ -949,9 +1050,7 @@
             window.open(currentVideo.video_url, '_blank');
         }
 
-        // =============================================
         // ===== UPLOAD VIDEO - YOUR EXACT WORKING VERSION =====
-        // =============================================
         async function uploadVideo(e) {
             e.preventDefault();
             
@@ -1061,9 +1160,7 @@
             return false;
         }
 
-        // =============================================
         // ===== EDIT VIDEO =====
-        // =============================================
         function openEdit(videoId, title, description) {
             editingVideoId = videoId;
             document.getElementById('editTitle').value = title;
@@ -1101,7 +1198,6 @@
                 showToast('Video updated successfully! 🎉');
                 closeEdit();
                 
-                // Refresh the current view
                 if (currentUser.role === 'super_admin') {
                     showAdmin();
                 } else {
@@ -1113,9 +1209,7 @@
             }
         }
 
-        // =============================================
         // ===== DELETE VIDEO =====
-        // =============================================
         async function deleteVideo(videoId) {
             if (!confirm('Are you sure you want to delete this video? This action cannot be undone!')) return;
             
@@ -1130,7 +1224,6 @@
                 
                 showToast('Video deleted successfully');
                 
-                // Refresh the current view
                 if (currentUser.role === 'super_admin') {
                     showAdmin();
                 } else {
@@ -1142,9 +1235,7 @@
             }
         }
 
-        // =============================================
         // ===== SUPER ADMIN DASHBOARD =====
-        // =============================================
         async function showAdmin() {
             if (!currentUser || currentUser.role !== 'super_admin') {
                 showToast('Access denied. Super Admin only.', 'error');
@@ -1165,7 +1256,6 @@
 
                 const data = await res.json();
 
-                // Stats
                 document.getElementById('statsGrid').innerHTML = `
                     <div class="admin-stat-card">
                         <div class="icon"><i class="fas fa-users"></i></div>
@@ -1199,7 +1289,6 @@
                     </div>
                 `;
 
-                // All Admins
                 const allAdminsList = document.getElementById('allAdminsList');
                 if (data.allAdmins && data.allAdmins.length) {
                     allAdminsList.innerHTML = data.allAdmins.map(a => `
@@ -1212,7 +1301,6 @@
                     allAdminsList.innerHTML = '<p style="color:#666;padding:10px 0;">No admins found</p>';
                 }
 
-                // Top Videos
                 const topVideosList = document.getElementById('topVideosList');
                 if (data.topVideos && data.topVideos.length) {
                     topVideosList.innerHTML = data.topVideos.map(v => `
@@ -1225,7 +1313,6 @@
                     topVideosList.innerHTML = '<p style="color:#666;padding:10px 0;">No videos yet</p>';
                 }
 
-                // All Videos - WITH EDIT AND DELETE BUTTONS
                 const allVideosList = document.getElementById('allVideosList');
                 if (data.allVideos && data.allVideos.length) {
                     allVideosList.innerHTML = data.allVideos.map(v => `
@@ -1246,7 +1333,6 @@
                     allVideosList.innerHTML = '<p style="color:#666;padding:10px 0;">No videos uploaded yet</p>';
                 }
 
-                // Recent Users
                 const recentUsersList = document.getElementById('recentUsersList');
                 if (data.recentUsers && data.recentUsers.length) {
                     recentUsersList.innerHTML = data.recentUsers.map(u => `
@@ -1259,7 +1345,6 @@
                     recentUsersList.innerHTML = '<p style="color:#666;padding:10px 0;">No users yet</p>';
                 }
 
-                // Logs
                 const logsList = document.getElementById('logsList');
                 if (data.recentLogs && data.recentLogs.length) {
                     logsList.innerHTML = data.recentLogs.map(l => `
@@ -1278,9 +1363,7 @@
             }
         }
 
-        // =============================================
         // ===== CREATE ADMIN =====
-        // =============================================
         async function createAdmin(e) {
             e.preventDefault();
             if (!currentUser || currentUser.role !== 'super_admin') {
@@ -1335,9 +1418,7 @@
             }
         }
 
-        // =============================================
-        // ===== MY VIDEOS (Admin Dashboard) =====
-        // =============================================
+        // ===== MY VIDEOS =====
         async function showMyVideos() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Access denied. Admin only.', 'error');
