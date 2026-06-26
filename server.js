@@ -45,26 +45,37 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config
+// Multer config for video uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
+    let dir = 'uploads/';
+    if (file.fieldname === 'video') {
+      dir = 'uploads/videos/';
+    } else if (file.fieldname === 'thumbnail') {
+      dir = 'uploads/thumbnails/';
+    }
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, uniqueName);
   }
 });
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB limit
+  storage: storage,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
   fileFilter: (req, file, cb) => {
-    if (file.fieldname === 'video' && !file.mimetype.startsWith('video/')) {
-      return cb(new Error('Only video files allowed'));
-    }
-    if (file.fieldname === 'thumbnail' && !file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files allowed'));
+    if (file.fieldname === 'video') {
+      const allowedTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/mkv', 'video/webm', 'video/quicktime'];
+      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('video/')) {
+        return cb(new Error('Only video files are allowed'));
+      }
+    } else if (file.fieldname === 'thumbnail') {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('image/')) {
+        return cb(new Error('Only image files are allowed for thumbnails'));
+      }
     }
     cb(null, true);
   }
@@ -75,20 +86,9 @@ async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // Drop and recreate tables with correct schema
+    // Check if tables exist, create if not
     await pool.query(`
-      DROP TABLE IF EXISTS videos CASCADE;
-      DROP TABLE IF EXISTS comments CASCADE;
-      DROP TABLE IF EXISTS user_actions CASCADE;
-      DROP TABLE IF EXISTS user_logs CASCADE;
-      DROP TABLE IF EXISTS website_stats CASCADE;
-      DROP TABLE IF EXISTS users CASCADE;
-    `);
-    console.log('✅ Dropped existing tables');
-
-    // Users table
-    await pool.query(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -99,11 +99,9 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       );
     `);
-    console.log('✅ Users table created');
 
-    // Videos table with uploader tracking
     await pool.query(`
-      CREATE TABLE videos (
+      CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
@@ -120,11 +118,9 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       );
     `);
-    console.log('✅ Videos table created');
 
-    // Comments table
     await pool.query(`
-      CREATE TABLE comments (
+      CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id),
@@ -132,11 +128,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Comments table created');
 
-    // User actions table
     await pool.query(`
-      CREATE TABLE user_actions (
+      CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         video_id INTEGER REFERENCES videos(id),
@@ -145,11 +139,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ User actions table created');
 
-    // User logs table
     await pool.query(`
-      CREATE TABLE user_logs (
+      CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         ip_address VARCHAR(45),
@@ -159,11 +151,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ User logs table created');
 
-    // Website stats table
     await pool.query(`
-      CREATE TABLE website_stats (
+      CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
         total_users INTEGER DEFAULT 0,
@@ -174,7 +164,6 @@ async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Website stats table created');
 
     // Create Super Admin
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
@@ -188,7 +177,7 @@ async function initDatabase() {
        secret_code = EXCLUDED.secret_code`,
       ['OWNER_MPC', hashedPassword, hashedSecret]
     );
-    console.log('✅ Super Admin created');
+    console.log('✅ Super Admin ready');
 
     // Initialize stats
     await pool.query(`
@@ -196,7 +185,6 @@ async function initDatabase() {
       SELECT 0, 0, 0, 0, 0, 0 
       WHERE NOT EXISTS (SELECT 1 FROM website_stats);
     `);
-    console.log('✅ Stats initialized');
 
     console.log('✅ Database initialized successfully!');
     console.log('👑 Super Admin: OWNER_MPC');
@@ -473,7 +461,7 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// GET SUPER ADMIN STATS (Full system stats)
+// GET SUPER ADMIN STATS
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -482,7 +470,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
     const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
     
-    // Get all admins
     const allAdmins = await pool.query(`
       SELECT id, username, role, created_at 
       FROM users 
@@ -490,16 +477,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       ORDER BY created_at DESC
     `);
 
-    // Get user growth (last 7 days)
-    const userGrowth = await pool.query(`
-      SELECT DATE(created_at) as date, COUNT(*) as count 
-      FROM users 
-      WHERE created_at >= NOW() - INTERVAL '7 days' 
-      GROUP BY DATE(created_at) 
-      ORDER BY date DESC
-    `);
-
-    // Get top videos
     const topVideos = await pool.query(`
       SELECT v.id, v.title, v.views, v.likes, v.share_count, u.username 
       FROM videos v 
@@ -509,7 +486,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 10
     `);
 
-    // Get recent users
     const recentUsers = await pool.query(`
       SELECT id, username, role, heard_from, created_at 
       FROM users 
@@ -517,7 +493,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 20
     `);
 
-    // Get logs
     const logs = await pool.query(
       `SELECT l.*, u.username 
        FROM user_logs l 
@@ -541,7 +516,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       videoCount: parseInt(videos.rows[0].total),
       commentCount: parseInt(comments.rows[0].total),
       allAdmins: allAdmins.rows,
-      userGrowth: userGrowth.rows,
       topVideos: topVideos.rows,
       recentUsers: recentUsers.rows,
       recentLogs: logs.rows || []
@@ -553,7 +527,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-// ===== ADMIN ONLY (Their own videos) =====
+// ===== ADMIN VIDEOS =====
 
 // GET ADMIN VIDEOS (Only their own videos)
 app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
@@ -578,7 +552,7 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
   }
 });
 
-// GET ADMIN STATS (Only their own stats)
+// GET ADMIN STATS
 app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videos = await pool.query(
@@ -605,14 +579,16 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ===== VIDEO OPERATIONS (Both SuperAdmin and Admin can manage their own videos) =====
-
-// UPLOAD VIDEO - FIXED with file size tracking
+// ===== VIDEO UPLOAD - FIXED =====
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log('📹 Upload request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+
     const { title, description } = req.body;
 
     if (!title || !req.files || !req.files.video) {
@@ -630,6 +606,9 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     const videoPath = '/uploads/videos/' + videoFile.filename;
     const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
 
+    console.log('📁 Video saved at:', videoPath);
+    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
+
     const result = await pool.query(
       `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
        VALUES ($1, $2, $3, $4, $5, $6, $7) 
@@ -644,6 +623,8 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       fileSize: videoFile.size 
     }, req);
 
+    console.log('✅ Video uploaded successfully:', result.rows[0].id);
+
     res.json({
       success: true,
       message: 'Video uploaded successfully',
@@ -651,12 +632,12 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     });
 
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('❌ Upload error:', error);
     res.status(500).json({ error: 'Upload failed: ' + error.message });
   }
 });
 
-// GET ALL VIDEOS (Public)
+// GET ALL VIDEOS
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -676,7 +657,7 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// GET VIDEO BY ID (Public)
+// GET VIDEO BY ID
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -719,7 +700,7 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// DELETE VIDEO (Only the owner can delete)
+// DELETE VIDEO
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -728,7 +709,6 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
       return res.status(400).json({ error: 'Invalid video ID' });
     }
 
-    // Check if video belongs to this user
     const videoResult = await pool.query(
       'SELECT video_url, thumbnail_url, title, uploader_id FROM videos WHERE id = $1',
       [videoId]
@@ -740,12 +720,10 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
 
     const video = videoResult.rows[0];
 
-    // Check ownership (only owner or super_admin can delete)
     if (video.uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
 
-    // Delete files
     try {
       if (video.video_url) {
         const videoPath = path.join(__dirname, video.video_url);
@@ -773,7 +751,7 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
   }
 });
 
-// LIKE/DISLIKE (Public)
+// LIKE/DISLIKE
 app.post('/api/videos/:id/like', authenticate, async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -819,7 +797,7 @@ app.post('/api/videos/:id/like', authenticate, async (req, res) => {
   }
 });
 
-// ADD COMMENT (Public)
+// ADD COMMENT
 app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -862,7 +840,7 @@ app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
   }
 });
 
-// SHARE VIDEO (Public)
+// SHARE VIDEO
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
