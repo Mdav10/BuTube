@@ -47,7 +47,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config
+// Multer config - YOUR EXACT WORKING VERSION
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -107,7 +107,6 @@ async function initDatabase() {
       )
     `);
 
-    // ===== FIXED: COMMENTS TABLE WITH USERNAME COLUMN =====
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
@@ -535,7 +534,6 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
     
-    // ===== FIXED: GET COMMENTS WITH USERNAME =====
     const commentsResult = await pool.query(
       'SELECT id, username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
@@ -579,34 +577,74 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
   }
 });
 
-// ============ DELETE VIDEO ============
+// ============ DELETE VIDEO - FIXED ============
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     
-    const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
-    if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
     
-    if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
+    // Get video info first
+    const videoResult = await pool.query(
+      'SELECT * FROM videos WHERE id = $1',
+      [videoId]
+    );
+    
+    if (videoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const video = videoResult.rows[0];
+    
+    // Check permission: SuperAdmin can delete ANY video, Admin can only delete their own
+    if (req.user.role !== 'super_admin' && video.uploader_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
-
-    const video = check.rows[0];
-    if (video.video_url) {
-      const filePath = path.join(__dirname, video.video_url);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-    if (video.thumbnail_url) {
-      const filePath = path.join(__dirname, video.thumbnail_url);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-
-    await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
-    await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
     
-    res.json({ success: true });
+    // Delete the video file from disk
+    try {
+      if (video.video_url) {
+        const filePath = path.join(__dirname, video.video_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('🗑️ Deleted video file:', filePath);
+        }
+      }
+      if (video.thumbnail_url) {
+        const filePath = path.join(__dirname, video.thumbnail_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('🗑️ Deleted thumbnail file:', filePath);
+        }
+      }
+    } catch (fileError) {
+      console.error('File deletion warning:', fileError);
+      // Continue even if file deletion fails - we still want to remove from database
+    }
+    
+    // Delete from database
+    await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
+    
+    // Update stats
+    await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
+    
+    await logUserActivity(req.user.id, 'delete_video', { 
+      videoId, 
+      title: video.title,
+      uploader: video.uploader_name 
+    }, req);
+    
+    console.log('✅ Video deleted successfully:', videoId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Video deleted successfully' 
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete video' });
+    console.error('❌ Delete error:', error);
+    res.status(500).json({ error: 'Failed to delete video: ' + error.message });
   }
 });
 
@@ -626,7 +664,6 @@ app.post('/api/videos/:id/like', async (req, res) => {
   }
 });
 
-// ===== FIXED: COMMENT ROUTE =====
 app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -636,7 +673,6 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       return res.status(400).json({ error: 'Name and comment required' });
     }
 
-    // Insert comment with username
     const result = await pool.query(
       'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING id, username, comment, created_at',
       [videoId, username.trim(), comment.trim()]
