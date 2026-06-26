@@ -13,26 +13,23 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============ DATABASE CONNECTION - FIXED ============
+// Database connection
 const pool = new Pool({
   user: 'neondb_owner',
   password: 'npg_Cb7XtKr0BIoN',
   host: 'ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech',
   port: 5432,
   database: 'neondb',
-  ssl: {
-    rejectUnauthorized: false
-  },
+  ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 10000,
 });
 
-// Test connection immediately
+// Test connection
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Database connection error:', err.message);
-    console.log('⚠️ Please check your database credentials');
+    console.error('❌ Database error:', err.message);
   } else {
-    console.log('✅ Database connected successfully!');
+    console.log('✅ Database connected');
     release();
   }
 });
@@ -76,91 +73,81 @@ const upload = multer({
   }
 });
 
-// Database initialization with retry
+// Initialize database
 async function initDatabase() {
-  let retries = 5;
-  while (retries > 0) {
-    try {
-      console.log(`🔄 Database init attempt ${6 - retries}/5...`);
+  try {
+    console.log('🔄 Initializing database...');
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          username VARCHAR(255) UNIQUE NOT NULL,
-          password VARCHAR(255) NOT NULL,
-          secret_code VARCHAR(255) NOT NULL,
-          heard_from VARCHAR(100),
-          role VARCHAR(50) DEFAULT 'user',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        secret_code VARCHAR(255) NOT NULL,
+        heard_from VARCHAR(100),
+        role VARCHAR(50) DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS videos (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(500) NOT NULL,
-          description TEXT,
-          video_url VARCHAR(500) NOT NULL,
-          thumbnail_url VARCHAR(500),
-          uploader_id INTEGER REFERENCES users(id),
-          uploader_name VARCHAR(255),
-          views INTEGER DEFAULT 0,
-          likes INTEGER DEFAULT 0,
-          dislikes INTEGER DEFAULT 0,
-          share_count INTEGER DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS videos (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        video_url VARCHAR(500) NOT NULL,
+        thumbnail_url VARCHAR(500),
+        uploader_id INTEGER REFERENCES users(id),
+        uploader_name VARCHAR(255),
+        views INTEGER DEFAULT 0,
+        likes INTEGER DEFAULT 0,
+        dislikes INTEGER DEFAULT 0,
+        share_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS comments (
-          id SERIAL PRIMARY KEY,
-          video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
-          username VARCHAR(255),
-          comment TEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
+        username VARCHAR(255),
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS website_stats (
-          id SERIAL PRIMARY KEY,
-          total_visits INTEGER DEFAULT 0,
-          total_users INTEGER DEFAULT 0,
-          total_videos INTEGER DEFAULT 0
-        )
-      `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS website_stats (
+        id SERIAL PRIMARY KEY,
+        total_visits INTEGER DEFAULT 0,
+        total_users INTEGER DEFAULT 0,
+        total_videos INTEGER DEFAULT 0
+      )
+    `);
 
-      // Create super admin
-      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
-      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
-      
-      await pool.query(
-        `INSERT INTO users (username, password, secret_code, role) 
-         VALUES ($1, $2, $3, 'super_admin') 
-         ON CONFLICT (username) DO NOTHING`,
-        ['OWNER_MPC', hashedPassword, hashedSecret]
-      );
+    // Create super admin
+    const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
+    const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+    
+    await pool.query(
+      `INSERT INTO users (username, password, secret_code, role) 
+       VALUES ($1, $2, $3, 'super_admin') 
+       ON CONFLICT (username) DO NOTHING`,
+      ['OWNER_MPC', hashedPassword, hashedSecret]
+    );
 
-      await pool.query(
-        `INSERT INTO website_stats (total_visits, total_users, total_videos) 
-         SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
-      );
+    await pool.query(
+      `INSERT INTO website_stats (total_visits, total_users, total_videos) 
+       SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
+    );
 
-      console.log('✅ Database initialized successfully');
-      console.log('👑 Super Admin: OWNER_MPC');
-      console.log('🔑 Password: 08800+_+Owner!');
-      console.log('🔐 Secret: ADMIN_SECRET_2024');
-      return true;
-    } catch (error) {
-      console.error(`❌ Database error (attempt ${6 - retries}/5):`, error.message);
-      retries--;
-      if (retries === 0) {
-        console.error('❌ All database connection attempts failed');
-        throw error;
-      }
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
+    console.log('✅ Database ready');
+    console.log('👑 Super Admin: OWNER_MPC');
+    console.log('🔑 Password: 08800+_+Owner!');
+    console.log('🔐 Secret: ADMIN_SECRET_2024');
+  } catch (error) {
+    console.error('❌ Database error:', error.message);
   }
 }
 

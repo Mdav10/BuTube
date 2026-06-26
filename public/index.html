@@ -35,16 +35,16 @@
         
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
         .auth-overlay.show { display: flex; }
-        .auth-box { background: #1a1a1a; padding: 40px; border-radius: 20px; max-width: 400px; width: 100%; border: 1px solid #333; }
+        .auth-box { background: #1a1a1a; padding: 40px; border-radius: 20px; max-width: 400px; width: 100%; border: 1px solid #333; position: relative; }
         .auth-box h2 { margin-bottom: 8px; }
         .auth-box .sub { color: #888; margin-bottom: 24px; }
-        .auth-box input, .auth-box select { width: 100%; padding: 12px 16px; margin-bottom: 12px; border: 1px solid #333; border-radius: 10px; background: #0a0a0a; color: #fff; font-size: 1rem; }
-        .auth-box input:focus, .auth-box select:focus { outline: none; border-color: #ff4444; }
+        .auth-box input { width: 100%; padding: 12px 16px; margin-bottom: 12px; border: 1px solid #333; border-radius: 10px; background: #0a0a0a; color: #fff; font-size: 1rem; }
+        .auth-box input:focus { outline: none; border-color: #ff4444; }
         .auth-box button { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #ff4444; color: #fff; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .auth-box button:hover { background: #ff6666; }
         .auth-box .toggle { text-align: center; margin-top: 16px; color: #888; }
         .auth-box .toggle a { color: #ff4444; cursor: pointer; }
-        .auth-close { position: absolute; top: 20px; right: 20px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; }
+        .auth-close { position: absolute; top: 16px; right: 20px; background: none; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; }
         
         .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
         .heard-overlay.show { display: flex; }
@@ -82,7 +82,7 @@
         .comment .text { color: #ccc; margin-top: 4px; }
         .comment .time { color: #666; font-size: 0.75rem; margin-top: 4px; }
         .add-comment { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-        .add-comment input { flex: 1; min-width: 120px; padding: 10px 14px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a; color: #fff; }
+        .add-comment input { flex: 1; min-width: 100px; padding: 10px 14px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a; color: #fff; }
         .add-comment input:focus { outline: none; border-color: #ff4444; }
         .add-comment button { padding: 10px 24px; border: none; border-radius: 8px; background: #ff4444; color: #fff; font-weight: bold; cursor: pointer; }
         .add-comment button:hover { background: #ff6666; }
@@ -129,7 +129,7 @@
         .my-video-card .info h3 { font-size: 1rem; }
         .my-video-card .info p { color: #888; font-size: 0.85rem; }
         .my-video-card .actions { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #222; }
-        .my-video-card .actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .my-video-card .actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
         .my-video-card .actions .btn-edit { background: rgba(255,165,0,0.2); color: #ffa500; }
         .my-video-card .actions .btn-edit:hover { background: rgba(255,165,0,0.4); }
         .my-video-card .actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
@@ -194,6 +194,7 @@
             .edit-modal .modal-box .modal-actions { flex-direction: column; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
             .join-container .share-buttons { grid-template-columns: 1fr; }
+            .upload-container { padding: 24px; }
         }
     </style>
 </head>
@@ -223,7 +224,7 @@
     </div>
 
     <div class="auth-overlay" id="authOverlay">
-        <div class="auth-box" style="position:relative;">
+        <div class="auth-box">
             <button class="auth-close" onclick="toggleAuth()">&times;</button>
             <h2 id="authTitle">Welcome Back</h2>
             <p class="sub" id="authSub">Login to your account</p>
@@ -309,7 +310,7 @@
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
                 <p class="sub">Share your content with the world (Max 500MB)</p>
-                <form id="uploadForm" onsubmit="return uploadVideo(event)">
+                <form id="uploadForm">
                     <input type="text" id="videoTitle" placeholder="Video Title" required>
                     <textarea id="videoDesc" placeholder="Video Description"></textarea>
                     <div class="file-input" id="videoFileInput" onclick="document.getElementById('videoFile').click()">
@@ -330,7 +331,7 @@
                         <p>Uploading... <span id="progressText">0%</span></p>
                         <div class="bar"><div class="fill" id="progressFill"></div></div>
                     </div>
-                    <button type="submit" class="btn-upload" id="uploadBtn">Upload Video</button>
+                    <button type="button" class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
                 </form>
             </div>
         </div>
@@ -433,9 +434,6 @@
 
         function toggleAuth() {
             document.getElementById('authOverlay').classList.toggle('show');
-            if (!document.getElementById('authOverlay').classList.contains('show')) {
-                document.getElementById('authForm').reset();
-            }
         }
 
         function toggleAuthMode() {
@@ -470,12 +468,11 @@
                 
                 localStorage.setItem('token', data.token);
                 currentUser = data.user;
-                toggleAuth();
+                document.getElementById('authOverlay').classList.remove('show');
                 updateUI();
                 loadVideos();
                 showToast(isLogin ? 'Welcome back, ' + username + '!' : 'Account created!');
                 
-                // Show heard from if not answered
                 if (!isLogin) {
                     setTimeout(showHeardModal, 500);
                 }
@@ -502,7 +499,7 @@
         function selectHeard(value) {
             selectedHeard = value;
             document.querySelectorAll('.opt').forEach(el => {
-                el.classList.toggle('selected', el.textContent.includes(value) || 
+                el.classList.toggle('selected', el.dataset.value === value || 
                     (value === 'friend' && el.textContent.includes('Friend')) ||
                     (value === 'self' && el.textContent.includes('Self')) ||
                     (value === 'facebook' && el.textContent.includes('Facebook')) ||
@@ -551,8 +548,10 @@
                     navMyVideos.style.display = 'inline';
                     if (currentUser.role === 'super_admin') {
                         navAdmin.style.display = 'inline';
+                        document.getElementById('createAdminSection').style.display = 'block';
                     } else {
                         navAdmin.style.display = 'none';
+                        document.getElementById('createAdminSection').style.display = 'none';
                     }
                 }
             } else {
@@ -701,70 +700,102 @@
             if (currentVideo) window.open(currentVideo.video_url, '_blank');
         }
 
-        async function uploadVideo(e) {
-            e.preventDefault();
+        // ===== UPLOAD VIDEO - FIXED =====
+        async function uploadVideo() {
+            const title = document.getElementById('videoTitle').value.trim();
+            const description = document.getElementById('videoDesc').value.trim();
+            const videoFile = document.getElementById('videoFile').files[0];
+            const thumbFile = document.getElementById('thumbFile').files[0];
+
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Only admins can upload', 'error');
                 return;
             }
-            const title = document.getElementById('videoTitle').value.trim();
-            const desc = document.getElementById('videoDesc').value.trim();
-            const videoFile = document.getElementById('videoFile').files[0];
-            const thumbFile = document.getElementById('thumbFile').files[0];
-            if (!title) { showToast('Please enter a title', 'error'); return; }
-            if (!videoFile) { showToast('Please select a video', 'error'); return; }
+
+            if (!title) {
+                showToast('Please enter a title', 'error');
+                return;
+            }
+
+            if (!videoFile) {
+                showToast('Please select a video', 'error');
+                return;
+            }
+
             if (videoFile.size > 500 * 1024 * 1024) {
                 showToast('Video exceeds 500MB limit', 'error');
                 return;
             }
+
             const formData = new FormData();
             formData.append('title', title);
-            formData.append('description', desc);
+            formData.append('description', description);
             formData.append('video', videoFile);
             if (thumbFile) formData.append('thumbnail', thumbFile);
             
-            document.getElementById('uploadProgress').style.display = 'block';
-            document.getElementById('uploadBtn').disabled = true;
-            document.getElementById('uploadBtn').textContent = 'Uploading...';
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            progressDiv.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
 
             try {
                 const xhr = new XMLHttpRequest();
                 xhr.upload.addEventListener('progress', function(e) {
                     if (e.lengthComputable) {
                         const pct = Math.round((e.loaded / e.total) * 100);
-                        document.getElementById('progressFill').style.width = pct + '%';
-                        document.getElementById('progressText').textContent = pct + '%';
+                        progressFill.style.width = pct + '%';
+                        progressText.textContent = pct + '%';
                     }
                 });
+
                 const result = await new Promise((resolve, reject) => {
                     xhr.open('POST', API + '/videos/upload', true);
                     xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('token'));
-                    xhr.onload = () => {
-                        try { resolve(JSON.parse(xhr.responseText)); } catch(e) { reject(new Error('Invalid response')); }
+                    xhr.onload = function() {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (xhr.status === 200 || xhr.status === 201) {
+                                resolve(data);
+                            } else {
+                                reject(new Error(data.error || 'Upload failed'));
+                            }
+                        } catch (e) {
+                            reject(new Error('Invalid response'));
+                        }
                     };
-                    xhr.onerror = () => reject(new Error('Network error'));
+                    xhr.onerror = function() {
+                        reject(new Error('Network error'));
+                    };
                     xhr.send(formData);
                 });
-                if (!result.success) throw new Error(result.error || 'Upload failed');
-                showToast('Video uploaded! 🎉');
-                document.getElementById('uploadForm').reset();
-                document.getElementById('videoFileName').style.display = 'none';
-                document.getElementById('thumbFileName').style.display = 'none';
-                document.querySelectorAll('.file-input').forEach(el => el.classList.remove('has-file'));
-                showHome();
-                loadVideos();
+
+                if (result.success) {
+                    showToast('Video uploaded successfully! 🎉');
+                    document.getElementById('uploadForm').reset();
+                    document.getElementById('videoFileName').style.display = 'none';
+                    document.getElementById('thumbFileName').style.display = 'none';
+                    document.querySelectorAll('.file-input').forEach(el => el.classList.remove('has-file'));
+                    showHome();
+                    loadVideos();
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
             } catch (error) {
                 showToast(error.message, 'error');
             } finally {
-                document.getElementById('uploadProgress').style.display = 'none';
-                document.getElementById('progressFill').style.width = '0%';
-                document.getElementById('progressText').textContent = '0%';
-                document.getElementById('uploadBtn').disabled = false;
-                document.getElementById('uploadBtn').textContent = 'Upload Video';
+                progressDiv.style.display = 'none';
+                progressFill.style.width = '0%';
+                progressText.textContent = '0%';
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Video';
             }
-            return false;
         }
 
+        // ===== EDIT VIDEO =====
         function openEdit(id, title, desc) {
             editingVideoId = id;
             document.getElementById('editTitle').value = title;
@@ -801,6 +832,7 @@
             }
         }
 
+        // ===== DELETE VIDEO =====
         async function deleteVideo(id) {
             if (!confirm('Delete this video?')) return;
             try {
@@ -817,6 +849,7 @@
             }
         }
 
+        // ===== ADMIN =====
         async function showAdmin() {
             if (!currentUser || currentUser.role !== 'super_admin') {
                 showToast('Access denied', 'error');
@@ -826,7 +859,6 @@
             document.getElementById('adminContent').classList.remove('hidden');
             document.getElementById('navAdmin').classList.add('active');
             document.getElementById('adminName').textContent = currentUser.username;
-            document.getElementById('createAdminSection').style.display = 'block';
 
             try {
                 const res = await fetch(API + '/admin/stats', {
@@ -838,9 +870,7 @@
                     <div class="stat-card"><div class="num">${data.videoCount || 0}</div><div class="label">Videos</div></div>
                     <div class="stat-card"><div class="num">${data.stats?.total_visits || 0}</div><div class="label">Visits</div></div>
                 `;
-            } catch (error) {
-                document.getElementById('statsGrid').innerHTML = '<p style="color:#666;">Failed to load stats</p>';
-            }
+            } catch (error) {}
 
             try {
                 const res = await fetch(API + '/admin/admins', {
@@ -889,6 +919,7 @@
             }
         }
 
+        // ===== MY VIDEOS =====
         async function showMyVideos() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Access denied', 'error');
@@ -979,7 +1010,7 @@
         function copySiteLink() { navigator.clipboard.writeText(window.location.href).then(() => showToast('Link copied!')); }
         function requestPro() { showToast('Request submitted! Admin will review.'); }
 
-        // Init
+        // ===== INIT =====
         const token = localStorage.getItem('token');
         if (token) {
             fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
@@ -999,6 +1030,9 @@
         if (params.get('v')) setTimeout(() => playVideo(params.get('v')), 1000);
 
         console.log('🚀 AKABAKUZE loaded!');
+        console.log('👑 Super Admin: OWNER_MPC');
+        console.log('🔑 Password: 08800+_+Owner!');
+        console.log('🔐 Secret: ADMIN_SECRET_2024');
     </script>
 </body>
 </html>
