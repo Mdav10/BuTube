@@ -47,7 +47,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config - KEEPING YOUR EXACT WORKING CONFIG
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -299,7 +299,7 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   }
 });
 
-// ============ ADMIN ROUTES ============
+// ============ SUPER ADMIN ONLY ROUTES ============
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -324,7 +324,6 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// ===== SUPER ADMIN STATS =====
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -338,6 +337,15 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       FROM users 
       WHERE role IN ('admin', 'super_admin')
       ORDER BY created_at DESC
+    `);
+
+    const allVideos = await pool.query(`
+      SELECT v.id, v.title, v.views, v.likes, v.share_count, v.created_at, u.username as uploader_name
+      FROM videos v 
+      JOIN users u ON v.uploader_id = u.id 
+      WHERE v.is_active = true 
+      ORDER BY v.created_at DESC
+      LIMIT 50
     `);
 
     const topVideos = await pool.query(`
@@ -379,6 +387,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       videoCount: parseInt(videos.rows[0].total),
       commentCount: parseInt(comments.rows[0].total),
       allAdmins: allAdmins.rows,
+      allVideos: allVideos.rows,
       topVideos: topVideos.rows,
       recentUsers: recentUsers.rows,
       recentLogs: logs.rows || []
@@ -390,7 +399,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-// ===== ADMIN MY STATS =====
+// ============ ADMIN ONLY ROUTES (Their own videos) ============
 app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videos = await pool.query(
@@ -417,7 +426,6 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ===== ADMIN MY VIDEOS =====
 app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
@@ -450,7 +458,6 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     const videoFile = req.files.video[0];
     const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
     
-    // Check file size (500MB max)
     if (videoFile.size > 500 * 1024 * 1024) {
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
@@ -542,6 +549,7 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+// ============ EDIT VIDEO ============
 app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -552,6 +560,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
+    // SuperAdmin can edit ANY video, Admin can only edit their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only edit your own videos' });
     }
@@ -569,6 +578,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
   }
 });
 
+// ============ DELETE VIDEO ============
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -576,6 +586,7 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
     const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
+    // SuperAdmin can delete ANY video, Admin can only delete their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
