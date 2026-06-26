@@ -55,153 +55,25 @@
         .auth-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; }
         .auth-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
 
-        /* ===== HEARD FROM MODAL - FIXED ===== */
-        .heard-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            bottom: 0; 
-            background: rgba(0,0,0,0.95); 
-            backdrop-filter: blur(30px); 
-            z-index: 99998; 
-            justify-content: center; 
-            align-items: center; 
-            padding: 20px; 
-        }
+        .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(30px); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
         .heard-overlay.show { display: flex; }
-        
-        .heard-box { 
-            background: #1a1a1a; 
-            border-radius: 28px; 
-            padding: 40px; 
-            max-width: 500px; 
-            width: 100%; 
-            border: 1px solid rgba(255,255,255,0.08); 
-            box-shadow: 0 50px 100px rgba(0,0,0,0.9); 
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .heard-box .heard-header { 
-            text-align: center; 
-            margin-bottom: 25px; 
-        }
-        .heard-box .heard-header .icon { 
-            font-size: 3.5rem; 
-            color: #ff6b6b; 
-            margin-bottom: 12px; 
-        }
-        .heard-box .heard-header h2 { 
-            font-size: 1.6rem; 
-            font-weight: 800; 
-            color: #fff;
-        }
-        .heard-box .heard-header p { 
-            color: #888; 
-            margin-top: 6px; 
-            font-size: 0.95rem; 
-        }
-        
-        .heard-box .options { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-            margin: 20px 0 25px; 
-        }
-        
-        .heard-box .option { 
-            padding: 16px 12px; 
-            border: 2px solid rgba(255,255,255,0.06); 
-            border-radius: 14px; 
-            background: rgba(255,255,255,0.02); 
-            color: #aaa; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            text-align: center; 
-            font-weight: 500; 
-        }
-        .heard-box .option:hover { 
-            border-color: rgba(255,107,107,0.3); 
-            background: rgba(255,107,107,0.05); 
-            color: #fff; 
-            transform: translateY(-2px); 
-        }
-        .heard-box .option.selected { 
-            border-color: #ff6b6b; 
-            background: rgba(255,107,107,0.15); 
-            color: #fff; 
-            box-shadow: 0 0 40px rgba(255,107,107,0.1); 
-        }
-        .heard-box .option i { 
-            display: block; 
-            font-size: 1.8rem; 
-            margin-bottom: 6px; 
-            color: #ff6b6b; 
-        }
-        .heard-box .option .label { 
-            font-size: 0.85rem; 
-        }
-        
-        /* ===== BUTTON ACTIONS - VISIBLE ===== */
-        .heard-box .btn-actions { 
-            display: flex; 
-            gap: 12px; 
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .heard-box .btn-actions .btn-submit { 
-            flex: 2; 
-            padding: 16px 24px; 
-            border: none; 
-            border-radius: 14px; 
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24); 
-            color: #fff; 
-            font-size: 1.05rem; 
-            font-weight: 700; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            min-width: 140px;
-        }
-        .heard-box .btn-actions .btn-submit:hover { 
-            transform: scale(1.02); 
-            box-shadow: 0 10px 30px rgba(255,107,107,0.3); 
-        }
-        .heard-box .btn-actions .btn-submit:disabled { 
-            opacity: 0.4; 
-            cursor: not-allowed; 
-            transform: none; 
-            box-shadow: none; 
-        }
-        
-        .heard-box .btn-actions .btn-skip { 
-            flex: 1; 
-            padding: 16px 20px; 
-            border: 1px solid rgba(255,255,255,0.1); 
-            border-radius: 14px; 
-            background: transparent; 
-            color: #888; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            font-weight: 500; 
-            min-width: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .heard-box .btn-actions .btn-skip:hover { 
-            border-color: rgba(255,255,255,0.2); 
-            color: #fff; 
-            background: rgba(255,255,255,0.05);
-        }
+        .heard-box { background: #1a1a1a; border-radius: 28px; padding: 40px; max-width: 500px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 50px 100px rgba(0,0,0,0.9); position: relative; max-height: 90vh; overflow-y: auto; }
+        .heard-box .heard-header { text-align: center; margin-bottom: 25px; }
+        .heard-box .heard-header .icon { font-size: 3.5rem; color: #ff6b6b; margin-bottom: 12px; }
+        .heard-box .heard-header h2 { font-size: 1.6rem; font-weight: 800; color: #fff; }
+        .heard-box .heard-header p { color: #888; margin-top: 6px; font-size: 0.95rem; }
+        .heard-box .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 25px; }
+        .heard-box .option { padding: 16px 12px; border: 2px solid rgba(255,255,255,0.06); border-radius: 14px; background: rgba(255,255,255,0.02); color: #aaa; cursor: pointer; transition: all 0.3s ease; text-align: center; font-weight: 500; }
+        .heard-box .option:hover { border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.05); color: #fff; transform: translateY(-2px); }
+        .heard-box .option.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.15); color: #fff; box-shadow: 0 0 40px rgba(255,107,107,0.1); }
+        .heard-box .option i { display: block; font-size: 1.8rem; margin-bottom: 6px; color: #ff6b6b; }
+        .heard-box .option .label { font-size: 0.85rem; }
+        .heard-box .btn-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .heard-box .btn-actions .btn-submit { flex: 2; padding: 16px 24px; border: none; border-radius: 14px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 140px; }
+        .heard-box .btn-actions .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .heard-box .btn-actions .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .heard-box .btn-actions .btn-skip { flex: 1; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: transparent; color: #888; cursor: pointer; transition: all 0.3s ease; font-weight: 500; min-width: 100px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .heard-box .btn-actions .btn-skip:hover { border-color: rgba(255,255,255,0.2); color: #fff; background: rgba(255,255,255,0.05); }
 
         .player-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 99997; padding: 20px; overflow-y: auto; }
         .player-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
@@ -238,21 +110,36 @@
         .upload-container .btn-upload { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
         .upload-container .btn-upload:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
 
+        /* ===== ADVANCED ADMIN DASHBOARD ===== */
         .admin-container { padding: 20px 0; }
-        .admin-container h2 { font-size: 1.8rem; margin-bottom: 24px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 30px; }
-        .stat-card { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
-        .stat-card .number { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .label { color: #888; font-size: 0.9rem; margin-top: 4px; }
-        .admin-actions { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
-        .admin-actions h3 { margin-bottom: 16px; }
-        .admin-actions input { padding: 12px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; margin-right: 10px; margin-bottom: 10px; min-width: 200px; }
-        .admin-actions input:focus { outline: none; border-color: #ff6b6b; }
-        .admin-actions button { padding: 12px 24px; border: none; border-radius: 10px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .admin-actions button:hover { transform: scale(1.02); }
+        .admin-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
+        .admin-container .sub { color: #888; margin-bottom: 24px; }
+        
+        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .admin-stat-card { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
+        .admin-stat-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
+        .admin-stat-card .icon { font-size: 2rem; color: #ff6b6b; margin-bottom: 8px; }
+        .admin-stat-card .number { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .admin-stat-card .label { color: #888; font-size: 0.9rem; margin-top: 4px; }
+        
+        .admin-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .admin-section { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .admin-section h3 { font-size: 1.1rem; margin-bottom: 16px; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .admin-section h3 i { color: #ff6b6b; }
+        
+        .admin-section input { width: 100%; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; margin-bottom: 10px; font-family: inherit; }
+        .admin-section input:focus { outline: none; border-color: #ff6b6b; }
+        .admin-section .btn-primary { padding: 12px 24px; border: none; border-radius: 10px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
+        .admin-section .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        
+        .admin-section .list-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #aaa; }
+        .admin-section .list-item .name { color: #fff; font-weight: 500; }
+        .admin-section .list-item .meta { color: #666; font-size: 0.8rem; }
+        
         .logs-container { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; }
-        .logs-container .log-entry { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; color: #aaa; }
+        .logs-container .log-entry { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; color: #aaa; display: flex; justify-content: space-between; align-items: center; }
         .logs-container .log-entry strong { color: #fff; }
+        .logs-container .log-entry .time { color: #666; font-size: 0.75rem; }
 
         .join-container { max-width: 600px; margin: 40px auto; background: #1a1a1a; padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
         .join-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
@@ -284,75 +171,23 @@
         .loading i { font-size: 3rem; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* ===== RESPONSIVE - FIXED ===== */
         @media (max-width: 768px) {
             .nav-container { flex-direction: column; align-items: stretch; gap: 8px; }
             .nav-links { justify-content: center; }
             .nav-links a { font-size: 0.8rem; padding: 6px 12px; }
             .video-grid { grid-template-columns: 1fr; }
             .auth-box { padding: 24px; }
-            
-            .heard-box { 
-                padding: 24px 20px; 
-                margin: 10px;
-                max-height: 85vh;
-            }
-            .heard-box .options { 
-                grid-template-columns: 1fr 1fr; 
-                gap: 8px;
-            }
-            .heard-box .option { 
-                padding: 12px 8px; 
-                font-size: 0.85rem;
-            }
-            .heard-box .option i { 
-                font-size: 1.4rem; 
-            }
-            .heard-box .btn-actions { 
-                flex-direction: column;
-                gap: 10px;
-            }
-            .heard-box .btn-actions .btn-submit { 
-                width: 100%;
-                padding: 14px;
-                font-size: 1rem;
-                min-width: unset;
-            }
-            .heard-box .btn-actions .btn-skip { 
-                width: 100%;
-                padding: 12px;
-                font-size: 0.9rem;
-                min-width: unset;
-            }
-            
+            .heard-box { padding: 24px 20px; margin: 10px; max-height: 85vh; }
+            .heard-box .options { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .heard-box .option { padding: 12px 8px; font-size: 0.85rem; }
+            .heard-box .option i { font-size: 1.4rem; }
+            .heard-box .btn-actions { flex-direction: column; gap: 10px; }
+            .heard-box .btn-actions .btn-submit { width: 100%; padding: 14px; font-size: 1rem; min-width: unset; }
+            .heard-box .btn-actions .btn-skip { width: 100%; padding: 12px; font-size: 0.9rem; min-width: unset; }
+            .admin-sections { grid-template-columns: 1fr; }
+            .admin-stats-grid { grid-template-columns: 1fr 1fr; }
             .join-container .share-buttons { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-            .admin-actions input { min-width: 100%; }
             .player-actions { justify-content: center; }
-        }
-
-        @media (max-width: 480px) {
-            .heard-box .options { 
-                grid-template-columns: 1fr 1fr; 
-            }
-            .heard-box .option { 
-                padding: 10px 6px; 
-                font-size: 0.8rem;
-            }
-            .heard-box .option i { 
-                font-size: 1.2rem; 
-            }
-            .heard-box .heard-header h2 { 
-                font-size: 1.3rem; 
-            }
-            .heard-box .btn-actions .btn-submit { 
-                padding: 12px;
-                font-size: 0.95rem;
-            }
-            .heard-box .btn-actions .btn-skip { 
-                padding: 10px;
-                font-size: 0.85rem;
-            }
         }
     </style>
 </head>
@@ -404,7 +239,7 @@
         </div>
     </div>
 
-    <!-- Heard From Modal - FIXED WITH VISIBLE BUTTONS -->
+    <!-- Heard From Modal -->
     <div class="heard-overlay" id="heardOverlay">
         <div class="heard-box">
             <div class="heard-header">
@@ -413,38 +248,16 @@
                 <p>Help us understand our community better</p>
             </div>
             <div class="options" id="heardOptions">
-                <div class="option" data-value="friend" onclick="selectHeard('friend')">
-                    <i class="fas fa-user-friends"></i>
-                    <div class="label">By Friend</div>
-                </div>
-                <div class="option" data-value="self" onclick="selectHeard('self')">
-                    <i class="fas fa-search"></i>
-                    <div class="label">Self Research</div>
-                </div>
-                <div class="option" data-value="facebook" onclick="selectHeard('facebook')">
-                    <i class="fab fa-facebook"></i>
-                    <div class="label">On Facebook</div>
-                </div>
-                <div class="option" data-value="instagram" onclick="selectHeard('instagram')">
-                    <i class="fab fa-instagram"></i>
-                    <div class="label">On Instagram</div>
-                </div>
-                <div class="option" data-value="twitter" onclick="selectHeard('twitter')">
-                    <i class="fab fa-twitter"></i>
-                    <div class="label">On Twitter</div>
-                </div>
-                <div class="option" data-value="other" onclick="selectHeard('other')">
-                    <i class="fas fa-ellipsis-h"></i>
-                    <div class="label">Other Media</div>
-                </div>
+                <div class="option" data-value="friend" onclick="selectHeard('friend')"><i class="fas fa-user-friends"></i><div class="label">By Friend</div></div>
+                <div class="option" data-value="self" onclick="selectHeard('self')"><i class="fas fa-search"></i><div class="label">Self Research</div></div>
+                <div class="option" data-value="facebook" onclick="selectHeard('facebook')"><i class="fab fa-facebook"></i><div class="label">On Facebook</div></div>
+                <div class="option" data-value="instagram" onclick="selectHeard('instagram')"><i class="fab fa-instagram"></i><div class="label">On Instagram</div></div>
+                <div class="option" data-value="twitter" onclick="selectHeard('twitter')"><i class="fab fa-twitter"></i><div class="label">On Twitter</div></div>
+                <div class="option" data-value="other" onclick="selectHeard('other')"><i class="fas fa-ellipsis-h"></i><div class="label">Other Media</div></div>
             </div>
             <div class="btn-actions">
-                <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">
-                    <i class="fas fa-check-circle"></i> Continue
-                </button>
-                <button class="btn-skip" onclick="skipHeard()">
-                    <i class="fas fa-times"></i> Skip
-                </button>
+                <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()"><i class="fas fa-check-circle"></i> Continue</button>
+                <button class="btn-skip" onclick="skipHeard()"><i class="fas fa-times"></i> Skip</button>
             </div>
         </div>
     </div>
@@ -507,18 +320,42 @@
             </div>
         </div>
 
+        <!-- ADVANCED ADMIN DASHBOARD -->
         <div id="adminContent" class="hidden">
             <div class="admin-container">
                 <h2>👑 Admin Dashboard</h2>
-                <div class="stats-grid" id="statsGrid"></div>
-                <div class="admin-actions">
-                    <h3>Create Admin Account</h3>
-                    <form onsubmit="createAdmin(event)">
-                        <input type="text" id="newAdminUser" placeholder="Admin Username" required>
-                        <input type="password" id="newAdminPass" placeholder="Admin Password" required>
-                        <button type="submit">Create Admin</button>
-                    </form>
+                <p class="sub">Welcome back, <span id="adminName">Admin</span>!</p>
+                
+                <!-- Stats -->
+                <div class="admin-stats-grid" id="statsGrid"></div>
+                
+                <!-- Sections -->
+                <div class="admin-sections">
+                    <!-- Create Admin -->
+                    <div class="admin-section">
+                        <h3><i class="fas fa-user-plus"></i> Create Admin Account</h3>
+                        <form onsubmit="createAdmin(event)">
+                            <input type="text" id="newAdminUser" placeholder="Admin Username" required>
+                            <input type="password" id="newAdminPass" placeholder="Admin Password" required>
+                            <input type="text" id="newAdminSecret" placeholder="Secret Code" required>
+                            <button type="submit" class="btn-primary">Create Admin</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Top Videos -->
+                    <div class="admin-section">
+                        <h3><i class="fas fa-fire"></i> Top Videos</h3>
+                        <div id="topVideosList">Loading...</div>
+                    </div>
                 </div>
+                
+                <!-- Recent Users -->
+                <div class="admin-section" style="margin-bottom:20px;">
+                    <h3><i class="fas fa-users"></i> Recent Users</h3>
+                    <div id="recentUsersList">Loading...</div>
+                </div>
+                
+                <!-- Logs -->
                 <div class="logs-container">
                     <h3 style="margin-bottom:12px;">📋 Recent Activity</h3>
                     <div id="logsList">Loading...</div>
@@ -613,12 +450,7 @@
                 const res = await fetch(API + endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        username, 
-                        password, 
-                        secretCode,
-                        heardFrom: null
-                    })
+                    body: JSON.stringify({ username, password, secretCode, heardFrom: null })
                 });
 
                 const data = await res.json();
@@ -651,7 +483,6 @@
             showToast('Logged out successfully');
         }
 
-        // ===== HEARD FROM - FIXED =====
         function showHeardModal() {
             document.getElementById('heardOverlay').classList.add('show');
             selectedHeard = null;
@@ -962,6 +793,7 @@
             }
         }
 
+        // ===== ADVANCED ADMIN DASHBOARD =====
         async function showAdmin() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Access denied. Admin only.', 'error');
@@ -971,6 +803,7 @@
             hideAll();
             document.getElementById('adminContent').classList.remove('hidden');
             document.getElementById('navAdmin').classList.add('active');
+            document.getElementById('adminName').textContent = currentUser.username;
 
             try {
                 const res = await fetch(API + '/admin/stats', {
@@ -981,32 +814,75 @@
 
                 const data = await res.json();
 
+                // Stats
                 document.getElementById('statsGrid').innerHTML = `
-                    <div class="stat-card">
-                        <div class="number">${data.stats?.total_visits || 0}</div>
-                        <div class="label">Total Visits</div>
-                    </div>
-                    <div class="stat-card">
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-users"></i></div>
                         <div class="number">${data.userCount || 0}</div>
                         <div class="label">Total Users</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-video"></i></div>
                         <div class="number">${data.videoCount || 0}</div>
                         <div class="label">Total Videos</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-eye"></i></div>
                         <div class="number">${data.stats?.total_views || 0}</div>
                         <div class="label">Total Views</div>
                     </div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-comment"></i></div>
+                        <div class="number">${data.commentCount || 0}</div>
+                        <div class="label">Total Comments</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-heart"></i></div>
+                        <div class="number">${data.stats?.total_likes || 0}</div>
+                        <div class="label">Total Likes</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="number">${data.stats?.total_visits || 0}</div>
+                        <div class="label">Total Visits</div>
+                    </div>
                 `;
 
+                // Top Videos
+                const topVideosList = document.getElementById('topVideosList');
+                if (data.topVideos && data.topVideos.length) {
+                    topVideosList.innerHTML = data.topVideos.map(v => `
+                        <div class="list-item">
+                            <span class="name">${v.title}</span>
+                            <span class="meta">${v.views} views • ${v.likes} likes</span>
+                        </div>
+                    `).join('');
+                } else {
+                    topVideosList.innerHTML = '<p style="color:#666;padding:10px 0;">No videos yet</p>';
+                }
+
+                // Recent Users
+                const recentUsersList = document.getElementById('recentUsersList');
+                if (data.recentUsers && data.recentUsers.length) {
+                    recentUsersList.innerHTML = data.recentUsers.map(u => `
+                        <div class="list-item">
+                            <span class="name">${u.username}</span>
+                            <span class="meta">${u.role} • ${new Date(u.created_at).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    recentUsersList.innerHTML = '<p style="color:#666;padding:10px 0;">No users yet</p>';
+                }
+
+                // Logs
                 const logsList = document.getElementById('logsList');
                 if (data.recentLogs && data.recentLogs.length) {
                     logsList.innerHTML = data.recentLogs.map(l => `
                         <div class="log-entry">
-                            <strong>${l.username || 'Unknown'}</strong> - 
-                            ${l.action} - 
-                            <span style="color:#666;">${new Date(l.created_at).toLocaleString()}</span>
+                            <div>
+                                <strong>${l.username || 'Unknown'}</strong> - ${l.action}
+                            </div>
+                            <span class="time">${new Date(l.created_at).toLocaleString()}</span>
                         </div>
                     `).join('');
                 } else {
@@ -1017,6 +893,7 @@
             }
         }
 
+        // CREATE ADMIN WITH SECRET CODE
         async function createAdmin(e) {
             e.preventDefault();
             if (!currentUser || currentUser.role !== 'super_admin') {
@@ -1026,9 +903,25 @@
 
             const username = document.getElementById('newAdminUser').value.trim();
             const password = document.getElementById('newAdminPass').value;
+            const secretCode = document.getElementById('newAdminSecret').value.trim();
 
-            if (!username || !password) {
-                showToast('Username and password required', 'error');
+            if (!username || !password || !secretCode) {
+                showToast('Username, password, and secret code are required', 'error');
+                return;
+            }
+
+            if (username.length < 3) {
+                showToast('Username must be at least 3 characters', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            if (secretCode.length < 4) {
+                showToast('Secret code must be at least 4 characters', 'error');
                 return;
             }
 
@@ -1039,15 +932,19 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + localStorage.getItem('token')
                     },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, secretCode })
                 });
 
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to create admin');
 
-                showToast('Admin created successfully!');
+                showToast(`✅ Admin "${username}" created! Secret: ${secretCode}`);
                 document.getElementById('newAdminUser').value = '';
                 document.getElementById('newAdminPass').value = '';
+                document.getElementById('newAdminSecret').value = '';
+                
+                // Refresh admin dashboard
+                showAdmin();
             } catch (error) {
                 showToast(error.message, 'error');
             }

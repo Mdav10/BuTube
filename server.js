@@ -37,6 +37,7 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], allowedHe
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
+app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
 // Create upload directories
@@ -69,14 +70,25 @@ const upload = multer({
   }
 });
 
-// Initialize database
+// Initialize database with correct schema
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
+    // Drop and recreate tables with correct schema
+    await pool.query(`
+      DROP TABLE IF EXISTS videos CASCADE;
+      DROP TABLE IF EXISTS comments CASCADE;
+      DROP TABLE IF EXISTS user_actions CASCADE;
+      DROP TABLE IF EXISTS user_logs CASCADE;
+      DROP TABLE IF EXISTS website_stats CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `);
+    console.log('✅ Dropped existing tables');
+
     // Users table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -87,10 +99,11 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       );
     `);
+    console.log('✅ Users table created');
 
-    // Videos table
+    // Videos table with correct columns
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS videos (
+      CREATE TABLE videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
@@ -105,10 +118,11 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       );
     `);
+    console.log('✅ Videos table created with correct columns');
 
     // Comments table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS comments (
+      CREATE TABLE comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id),
@@ -116,10 +130,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('✅ Comments table created');
 
     // User actions table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_actions (
+      CREATE TABLE user_actions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         video_id INTEGER REFERENCES videos(id),
@@ -128,10 +143,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('✅ User actions table created');
 
     // User logs table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_logs (
+      CREATE TABLE user_logs (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         ip_address VARCHAR(45),
@@ -141,20 +157,24 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('✅ User logs table created');
 
     // Website stats table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS website_stats (
+      CREATE TABLE website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
         total_users INTEGER DEFAULT 0,
         total_videos INTEGER DEFAULT 0,
         total_views INTEGER DEFAULT 0,
+        total_likes INTEGER DEFAULT 0,
+        total_comments INTEGER DEFAULT 0,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('✅ Website stats table created');
 
-    // Create Super Admin
+    // Create Super Admin with secret code
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
 
@@ -166,18 +186,20 @@ async function initDatabase() {
        secret_code = EXCLUDED.secret_code`,
       ['OWNER_MPC', hashedPassword, hashedSecret]
     );
+    console.log('✅ Super Admin created');
 
     // Initialize stats
     await pool.query(`
-      INSERT INTO website_stats (total_visits, total_users, total_videos) 
-      SELECT 0, 0, 0 
+      INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
+      SELECT 0, 0, 0, 0, 0, 0 
       WHERE NOT EXISTS (SELECT 1 FROM website_stats);
     `);
+    console.log('✅ Stats initialized');
 
-    console.log('✅ Database initialized successfully');
+    console.log('✅ Database initialized successfully!');
     console.log('👑 Super Admin: OWNER_MPC');
     console.log('🔑 Password: 08800+_+Owner!');
-    console.log('🔐 Secret: ADMIN_SECRET_2024');
+    console.log('🔐 Secret Code: ADMIN_SECRET_2024');
 
   } catch (error) {
     console.error('❌ Database error:', error.message);
@@ -363,7 +385,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
-// UPDATE HEARD FROM - FIXED
+// UPDATE HEARD FROM
 app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   try {
     const { heardFrom } = req.body;
@@ -372,15 +394,12 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Please select how you heard about us' });
     }
 
-    // Update the user's heard_from in database
     await pool.query(
       'UPDATE users SET heard_from = $1 WHERE id = $2',
       [heardFrom, req.user.id]
     );
 
-    // Update the user object
     req.user.heard_from = heardFrom;
-
     await logUserActivity(req.user.id, 'update_heard_from', { heardFrom }, req);
 
     res.json({
@@ -396,13 +415,25 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   }
 });
 
-// CREATE ADMIN
+// CREATE ADMIN - WITH SECRET CODE
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, secretCode } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    if (!username || !password || !secretCode) {
+      return res.status(400).json({ error: 'Username, password, and secret code are required' });
+    }
+
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (secretCode.length < 4) {
+      return res.status(400).json({ error: 'Secret code must be at least 4 characters' });
     }
 
     const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -411,7 +442,7 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedSecret = await bcrypt.hash('ADMIN_' + Date.now(), 10);
+    const hashedSecret = await bcrypt.hash(secretCode, 10);
 
     const result = await pool.query(
       `INSERT INTO users (username, password, secret_code, role, heard_from) 
@@ -420,12 +451,16 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
       [username, hashedPassword, hashedSecret]
     );
 
-    await logUserActivity(req.user.id, 'create_admin', { newAdmin: username }, req);
+    await logUserActivity(req.user.id, 'create_admin', { 
+      newAdmin: username, 
+      secretCode: secretCode 
+    }, req);
 
     res.json({
       success: true,
       message: 'Admin created successfully',
-      admin: result.rows[0]
+      admin: result.rows[0],
+      secretCode: secretCode
     });
 
   } catch (error) {
@@ -434,12 +469,51 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// GET ADMIN STATS
+// GET ADMIN STATS - ADVANCED
 app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
     const users = await pool.query('SELECT COUNT(*) as total FROM users');
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
+    const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
+    
+    // Get user growth (last 7 days)
+    const userGrowth = await pool.query(`
+      SELECT DATE(created_at) as date, COUNT(*) as count 
+      FROM users 
+      WHERE created_at >= NOW() - INTERVAL '7 days' 
+      GROUP BY DATE(created_at) 
+      ORDER BY date DESC
+    `);
+
+    // Get video views by day
+    const viewsData = await pool.query(`
+      SELECT DATE(created_at) as date, SUM(views) as total_views 
+      FROM videos 
+      WHERE created_at >= NOW() - INTERVAL '7 days' 
+      GROUP BY DATE(created_at) 
+      ORDER BY date DESC
+    `);
+
+    // Get top videos
+    const topVideos = await pool.query(`
+      SELECT v.id, v.title, v.views, v.likes, v.share_count, u.username 
+      FROM videos v 
+      JOIN users u ON v.uploader_id = u.id 
+      WHERE v.is_active = true 
+      ORDER BY v.views DESC 
+      LIMIT 10
+    `);
+
+    // Get recent users
+    const recentUsers = await pool.query(`
+      SELECT id, username, role, heard_from, created_at 
+      FROM users 
+      ORDER BY created_at DESC 
+      LIMIT 20
+    `);
+
+    // Get logs
     const logs = await pool.query(
       `SELECT l.*, u.username 
        FROM user_logs l 
@@ -450,9 +524,21 @@ app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), asy
 
     res.json({
       success: true,
-      stats: stats.rows[0] || { total_visits: 0, total_users: 0, total_videos: 0 },
+      stats: stats.rows[0] || { 
+        total_visits: 0, 
+        total_users: 0, 
+        total_videos: 0, 
+        total_views: 0,
+        total_likes: 0,
+        total_comments: 0
+      },
       userCount: parseInt(users.rows[0].total),
       videoCount: parseInt(videos.rows[0].total),
+      commentCount: parseInt(comments.rows[0].total),
+      userGrowth: userGrowth.rows,
+      viewsData: viewsData.rows,
+      topVideos: topVideos.rows,
+      recentUsers: recentUsers.rows,
       recentLogs: logs.rows || []
     });
 
@@ -462,7 +548,7 @@ app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), asy
   }
 });
 
-// UPLOAD VIDEO
+// UPLOAD VIDEO - FIXED
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -488,7 +574,11 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     );
 
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
-    await logUserActivity(req.user.id, 'upload_video', { videoId: result.rows[0].id, title }, req);
+    await logUserActivity(req.user.id, 'upload_video', { 
+      videoId: result.rows[0].id, 
+      title: title,
+      fileSize: videoFile.size 
+    }, req);
 
     res.json({
       success: true,
@@ -502,7 +592,7 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// GET ALL VIDEOS
+// GET ALL VIDEOS - FIXED
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -518,11 +608,11 @@ app.get('/api/videos', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Get videos error:', error);
-    res.status(500).json({ error: 'Failed to get videos' });
+    res.status(500).json({ error: 'Failed to get videos: ' + error.message });
   }
 });
 
-// GET VIDEO BY ID
+// GET VIDEO BY ID - FIXED
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -561,7 +651,7 @@ app.get('/api/videos/:id', async (req, res) => {
 
   } catch (error) {
     console.error('Get video error:', error);
-    res.status(500).json({ error: 'Failed to get video' });
+    res.status(500).json({ error: 'Failed to get video: ' + error.message });
   }
 });
 
@@ -636,6 +726,7 @@ app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
       [videoId, req.user.id, comment.trim()]
     );
 
+    await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
     await logUserActivity(req.user.id, 'comment_video', { videoId, comment: comment.trim() }, req);
 
     res.json({
@@ -748,12 +839,12 @@ app.listen(PORT, async () => {
   try {
     await initDatabase();
     console.log('\n✅ Server is ready!');
-    console.log('=' .repeat(50));
-    console.log('👑 Super Admin Credentials:');
+    console.log('=' .repeat(60));
+    console.log('👑 SUPER ADMIN Credentials:');
     console.log('   Username: OWNER_MPC');
     console.log('   Password: 08800+_+Owner!');
     console.log('   Secret Code: ADMIN_SECRET_2024');
-    console.log('=' .repeat(50));
+    console.log('=' .repeat(60));
   } catch (error) {
     console.error('❌ Failed to initialize database:', error.message);
   }
