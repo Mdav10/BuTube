@@ -40,7 +40,6 @@
         .video-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
         .video-meta { font-size: 0.85rem; color: #888; display: flex; align-items: center; gap: 8px; }
 
-        /* Auth Overlay */
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
         .auth-overlay.show { display: flex; }
         .auth-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 420px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
@@ -56,29 +55,154 @@
         .auth-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; }
         .auth-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
 
-        /* Heard From Modal - FIXED */
-        .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(30px); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
+        /* ===== HEARD FROM MODAL - FIXED ===== */
+        .heard-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0,0,0,0.95); 
+            backdrop-filter: blur(30px); 
+            z-index: 99998; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+        }
         .heard-overlay.show { display: flex; }
-        .heard-box { background: #1a1a1a; border-radius: 28px; padding: 50px 40px; max-width: 480px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 50px 100px rgba(0,0,0,0.9); position: relative; }
-        .heard-box .heard-header { text-align: center; margin-bottom: 30px; }
-        .heard-box .heard-header .icon { font-size: 3.5rem; color: #ff6b6b; margin-bottom: 12px; }
-        .heard-box .heard-header h2 { font-size: 1.8rem; font-weight: 800; }
-        .heard-box .heard-header p { color: #888; margin-top: 6px; font-size: 0.95rem; }
-        .heard-box .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 25px; }
-        .heard-box .option { padding: 16px 12px; border: 2px solid rgba(255,255,255,0.06); border-radius: 14px; background: rgba(255,255,255,0.02); color: #aaa; cursor: pointer; transition: all 0.3s ease; text-align: center; font-weight: 500; }
-        .heard-box .option:hover { border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.05); color: #fff; transform: translateY(-2px); }
-        .heard-box .option.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.12); color: #fff; box-shadow: 0 0 40px rgba(255,107,107,0.08); }
-        .heard-box .option i { display: block; font-size: 1.8rem; margin-bottom: 6px; color: #ff6b6b; }
-        .heard-box .option.selected i { color: #ff6b6b; }
-        .heard-box .option .label { font-size: 0.85rem; }
-        .heard-box .btn-actions { display: flex; gap: 12px; }
-        .heard-box .btn-actions .btn-submit { flex: 1; padding: 16px; border: none; border-radius: 14px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
-        .heard-box .btn-actions .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
-        .heard-box .btn-actions .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-        .heard-box .btn-actions .btn-skip { padding: 16px 24px; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: transparent; color: #888; cursor: pointer; transition: all 0.3s ease; font-weight: 500; }
-        .heard-box .btn-actions .btn-skip:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+        
+        .heard-box { 
+            background: #1a1a1a; 
+            border-radius: 28px; 
+            padding: 40px; 
+            max-width: 500px; 
+            width: 100%; 
+            border: 1px solid rgba(255,255,255,0.08); 
+            box-shadow: 0 50px 100px rgba(0,0,0,0.9); 
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .heard-box .heard-header { 
+            text-align: center; 
+            margin-bottom: 25px; 
+        }
+        .heard-box .heard-header .icon { 
+            font-size: 3.5rem; 
+            color: #ff6b6b; 
+            margin-bottom: 12px; 
+        }
+        .heard-box .heard-header h2 { 
+            font-size: 1.6rem; 
+            font-weight: 800; 
+            color: #fff;
+        }
+        .heard-box .heard-header p { 
+            color: #888; 
+            margin-top: 6px; 
+            font-size: 0.95rem; 
+        }
+        
+        .heard-box .options { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin: 20px 0 25px; 
+        }
+        
+        .heard-box .option { 
+            padding: 16px 12px; 
+            border: 2px solid rgba(255,255,255,0.06); 
+            border-radius: 14px; 
+            background: rgba(255,255,255,0.02); 
+            color: #aaa; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            text-align: center; 
+            font-weight: 500; 
+        }
+        .heard-box .option:hover { 
+            border-color: rgba(255,107,107,0.3); 
+            background: rgba(255,107,107,0.05); 
+            color: #fff; 
+            transform: translateY(-2px); 
+        }
+        .heard-box .option.selected { 
+            border-color: #ff6b6b; 
+            background: rgba(255,107,107,0.15); 
+            color: #fff; 
+            box-shadow: 0 0 40px rgba(255,107,107,0.1); 
+        }
+        .heard-box .option i { 
+            display: block; 
+            font-size: 1.8rem; 
+            margin-bottom: 6px; 
+            color: #ff6b6b; 
+        }
+        .heard-box .option .label { 
+            font-size: 0.85rem; 
+        }
+        
+        /* ===== BUTTON ACTIONS - VISIBLE ===== */
+        .heard-box .btn-actions { 
+            display: flex; 
+            gap: 12px; 
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .heard-box .btn-actions .btn-submit { 
+            flex: 2; 
+            padding: 16px 24px; 
+            border: none; 
+            border-radius: 14px; 
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24); 
+            color: #fff; 
+            font-size: 1.05rem; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 140px;
+        }
+        .heard-box .btn-actions .btn-submit:hover { 
+            transform: scale(1.02); 
+            box-shadow: 0 10px 30px rgba(255,107,107,0.3); 
+        }
+        .heard-box .btn-actions .btn-submit:disabled { 
+            opacity: 0.4; 
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none; 
+        }
+        
+        .heard-box .btn-actions .btn-skip { 
+            flex: 1; 
+            padding: 16px 20px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 14px; 
+            background: transparent; 
+            color: #888; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-weight: 500; 
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .heard-box .btn-actions .btn-skip:hover { 
+            border-color: rgba(255,255,255,0.2); 
+            color: #fff; 
+            background: rgba(255,255,255,0.05);
+        }
 
-        /* Player */
         .player-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 99997; padding: 20px; overflow-y: auto; }
         .player-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
         .player-container { max-width: 1000px; width: 100%; background: #0a0a0a; border-radius: 20px; overflow: hidden; margin: 20px auto; position: relative; }
@@ -160,18 +284,75 @@
         .loading i { font-size: 3rem; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
+        /* ===== RESPONSIVE - FIXED ===== */
         @media (max-width: 768px) {
             .nav-container { flex-direction: column; align-items: stretch; gap: 8px; }
             .nav-links { justify-content: center; }
             .nav-links a { font-size: 0.8rem; padding: 6px 12px; }
             .video-grid { grid-template-columns: 1fr; }
             .auth-box { padding: 24px; }
-            .heard-box { padding: 30px 20px; }
-            .heard-box .options { grid-template-columns: 1fr; }
-            .heard-box .btn-actions { flex-direction: column; }
+            
+            .heard-box { 
+                padding: 24px 20px; 
+                margin: 10px;
+                max-height: 85vh;
+            }
+            .heard-box .options { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 8px;
+            }
+            .heard-box .option { 
+                padding: 12px 8px; 
+                font-size: 0.85rem;
+            }
+            .heard-box .option i { 
+                font-size: 1.4rem; 
+            }
+            .heard-box .btn-actions { 
+                flex-direction: column;
+                gap: 10px;
+            }
+            .heard-box .btn-actions .btn-submit { 
+                width: 100%;
+                padding: 14px;
+                font-size: 1rem;
+                min-width: unset;
+            }
+            .heard-box .btn-actions .btn-skip { 
+                width: 100%;
+                padding: 12px;
+                font-size: 0.9rem;
+                min-width: unset;
+            }
+            
             .join-container .share-buttons { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
             .admin-actions input { min-width: 100%; }
+            .player-actions { justify-content: center; }
+        }
+
+        @media (max-width: 480px) {
+            .heard-box .options { 
+                grid-template-columns: 1fr 1fr; 
+            }
+            .heard-box .option { 
+                padding: 10px 6px; 
+                font-size: 0.8rem;
+            }
+            .heard-box .option i { 
+                font-size: 1.2rem; 
+            }
+            .heard-box .heard-header h2 { 
+                font-size: 1.3rem; 
+            }
+            .heard-box .btn-actions .btn-submit { 
+                padding: 12px;
+                font-size: 0.95rem;
+            }
+            .heard-box .btn-actions .btn-skip { 
+                padding: 10px;
+                font-size: 0.85rem;
+            }
         }
     </style>
 </head>
@@ -223,7 +404,7 @@
         </div>
     </div>
 
-    <!-- Heard From Modal - FIXED -->
+    <!-- Heard From Modal - FIXED WITH VISIBLE BUTTONS -->
     <div class="heard-overlay" id="heardOverlay">
         <div class="heard-box">
             <div class="heard-header">
@@ -259,7 +440,7 @@
             </div>
             <div class="btn-actions">
                 <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">
-                    <i class="fas fa-check"></i> Continue
+                    <i class="fas fa-check-circle"></i> Continue
                 </button>
                 <button class="btn-skip" onclick="skipHeard()">
                     <i class="fas fa-times"></i> Skip
@@ -296,14 +477,12 @@
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Home -->
         <div id="homeContent">
             <div class="video-grid" id="videoGrid">
                 <div class="loading"><i class="fas fa-spinner"></i><br>Loading videos...</div>
             </div>
         </div>
 
-        <!-- Upload -->
         <div id="uploadContent" class="hidden">
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
@@ -328,7 +507,6 @@
             </div>
         </div>
 
-        <!-- Admin -->
         <div id="adminContent" class="hidden">
             <div class="admin-container">
                 <h2>👑 Admin Dashboard</h2>
@@ -348,7 +526,6 @@
             </div>
         </div>
 
-        <!-- Join Us -->
         <div id="joinContent" class="hidden">
             <div class="join-container">
                 <h2>🤝 Join Us & Make Money!</h2>
@@ -391,7 +568,6 @@
         let isLogin = true;
         let selectedHeard = null;
 
-        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = toast.querySelector('i');
@@ -404,7 +580,6 @@
             toast._timeout = setTimeout(() => toast.classList.remove('show'), 4000);
         }
 
-        // ============ AUTH ============
         function toggleAuth() {
             const overlay = document.getElementById('authOverlay');
             overlay.classList.toggle('show');
@@ -456,7 +631,6 @@
                 currentUser = data.user;
                 toggleAuth();
 
-                // Show "How did you hear about us?" if not answered
                 if (!currentUser.heardFrom || currentUser.heardFrom === 'null' || currentUser.heardFrom === null) {
                     showHeardModal();
                 } else {
@@ -477,7 +651,7 @@
             showToast('Logged out successfully');
         }
 
-        // ============ HEARD FROM - FIXED ============
+        // ===== HEARD FROM - FIXED =====
         function showHeardModal() {
             document.getElementById('heardOverlay').classList.add('show');
             selectedHeard = null;
@@ -517,7 +691,6 @@
                 const data = await res.json();
                 document.getElementById('heardOverlay').classList.remove('show');
                 
-                // Update current user
                 currentUser.heardFrom = selectedHeard;
                 updateUI();
                 loadVideos();
@@ -534,7 +707,6 @@
             showToast('You can update this later in your profile');
         }
 
-        // ============ UI UPDATE ============
         function updateUI() {
             const authText = document.getElementById('authText');
             const navAuth = document.getElementById('navAuth');
@@ -559,7 +731,6 @@
             }
         }
 
-        // ============ VIDEOS ============
         async function loadVideos() {
             try {
                 const res = await fetch(API + '/videos');
@@ -603,7 +774,6 @@
             }
         }
 
-        // ============ PLAY VIDEO ============
         async function playVideo(id) {
             try {
                 const res = await fetch(API + '/videos/' + id);
@@ -640,7 +810,6 @@
             video.src = '';
         }
 
-        // ============ COMMENTS ============
         function displayComments(comments) {
             const list = document.getElementById('commentsList');
             if (!comments.length) {
@@ -691,7 +860,6 @@
             }
         }
 
-        // ============ LIKE/DISLIKE ============
         async function likeVideo() {
             if (!currentUser) { showToast('Please login', 'error'); return; }
             await interactVideo('like');
@@ -726,7 +894,6 @@
             }
         }
 
-        // ============ SHARE ============
         async function shareVideo() {
             const url = window.location.origin + '/?v=' + currentVideo.id;
             if (navigator.share) {
@@ -755,7 +922,6 @@
             window.open(currentVideo.video_url, '_blank');
         }
 
-        // ============ UPLOAD ============
         async function uploadVideo(e) {
             e.preventDefault();
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
@@ -796,7 +962,6 @@
             }
         }
 
-        // ============ ADMIN ============
         async function showAdmin() {
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Access denied. Admin only.', 'error');
@@ -888,7 +1053,6 @@
             }
         }
 
-        // ============ NAVIGATION ============
         function showHome() {
             hideAll();
             document.getElementById('homeContent').style.display = 'block';
@@ -919,7 +1083,6 @@
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
         }
 
-        // ============ SHARE FUNCTIONS ============
         function shareFacebook() {
             window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href), '_blank');
         }
@@ -940,7 +1103,7 @@
             showToast('Request submitted! Admin will review your account.');
         }
 
-        // ============ INIT ============
+        // ===== INIT =====
         const token = localStorage.getItem('token');
         if (token) {
             fetch(API + '/auth/me', {
@@ -951,7 +1114,6 @@
                 if (data.user) {
                     currentUser = data.user;
                     updateUI();
-                    // Check if user needs to answer "How did you hear about us?"
                     if (!currentUser.heardFrom || currentUser.heardFrom === 'null' || currentUser.heardFrom === null) {
                         showHeardModal();
                     } else {
@@ -967,7 +1129,6 @@
             loadVideos();
         }
 
-        // Check for video in URL
         const params = new URLSearchParams(window.location.search);
         const vid = params.get('v');
         if (vid) setTimeout(() => playVideo(vid), 1000);
