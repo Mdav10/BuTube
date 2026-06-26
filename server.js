@@ -13,7 +13,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============ DATABASE CONNECTION ============
+// Database connection
 const pool = new Pool({
   user: 'neondb_owner',
   password: 'npg_Cb7XtKr0BIoN',
@@ -33,7 +33,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ MIDDLEWARE ============
+// Middleware
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '500mb' }));
@@ -42,12 +42,12 @@ app.use(compression());
 app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
-// ============ CREATE DIRECTORIES ============
+// Create directories
 ['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER CONFIG ============
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -73,9 +73,10 @@ const upload = multer({
   }
 });
 
-// ============ INIT DATABASE ============
+// Init database
 async function initDatabase() {
   try {
+    // Drop and recreate tables to ensure correct schema
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -109,7 +110,7 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
-        username VARCHAR(255),
+        username VARCHAR(255) NOT NULL,
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -124,6 +125,7 @@ async function initDatabase() {
       )
     `);
 
+    // Create super admin
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
     
@@ -148,7 +150,7 @@ async function initDatabase() {
   }
 }
 
-// ============ AUTH MIDDLEWARE ============
+// Auth middleware
 const auth = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
@@ -501,7 +503,7 @@ app.get('/api/my-stats', auth, async (req, res) => {
     }
     
     const result = await pool.query(
-      'SELECT COUNT(*) as total, SUM(views) as views FROM videos WHERE uploader_id = $1',
+      'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as views FROM videos WHERE uploader_id = $1',
       [req.user.id]
     );
     
@@ -514,12 +516,12 @@ app.get('/api/my-stats', auth, async (req, res) => {
   }
 });
 
-// ============ SERVE FRONTEND ============
+// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ============ START SERVER ============
+// Start server
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDatabase();
