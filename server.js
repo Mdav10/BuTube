@@ -47,7 +47,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config
+// Multer config - KEEPING YOUR EXACT WORKING CONFIG
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -238,6 +238,7 @@ app.post('/api/auth/register', async (req, res) => {
     );
     
     await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
+    await logUserActivity(result.rows[0].id, 'register', { heardFrom }, req);
     
     const token = jwt.sign(
       { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
@@ -270,6 +271,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
+    await logUserActivity(user.id, 'login', { success: true }, req);
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
@@ -298,7 +300,7 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
 });
 
 // ============ ADMIN ROUTES ============
-app.post('/api/admin/create', authenticate, authorize('super_admin'), async (req, res) => {
+app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
     if (!username || !password || !secretCode) {
@@ -314,38 +316,122 @@ app.post('/api/admin/create', authenticate, authorize('super_admin'), async (req
       [username, hashedPassword, hashedSecret]
     );
     
+    await logUserActivity(req.user.id, 'create_admin', { newAdmin: username }, req);
+    
     res.json({ success: true, admin: result.rows[0], secretCode });
   } catch (error) {
     res.status(500).json({ error: 'Failed to create admin' });
   }
 });
 
-app.get('/api/admin/admins', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query("SELECT id, username, role FROM users WHERE role IN ('admin', 'super_admin')");
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get admins' });
-  }
-});
-
-app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+// ===== SUPER ADMIN STATS =====
+app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
     const users = await pool.query('SELECT COUNT(*) as total FROM users');
+    const admins = await pool.query("SELECT COUNT(*) as total FROM users WHERE role IN ('admin', 'super_admin')");
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
+    const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
     
+    const allAdmins = await pool.query(`
+      SELECT id, username, role, created_at 
+      FROM users 
+      WHERE role IN ('admin', 'super_admin')
+      ORDER BY created_at DESC
+    `);
+
+    const topVideos = await pool.query(`
+      SELECT v.id, v.title, v.views, v.likes, v.share_count, u.username 
+      FROM videos v 
+      JOIN users u ON v.uploader_id = u.id 
+      WHERE v.is_active = true 
+      ORDER BY v.views DESC 
+      LIMIT 10
+    `);
+
+    const recentUsers = await pool.query(`
+      SELECT id, username, role, heard_from, created_at 
+      FROM users 
+      ORDER BY created_at DESC 
+      LIMIT 20
+    `);
+
+    const logs = await pool.query(
+      `SELECT l.*, u.username 
+       FROM user_logs l 
+       LEFT JOIN users u ON l.user_id = u.id 
+       ORDER BY l.created_at DESC 
+       LIMIT 100`
+    );
+
     res.json({
-      stats: stats.rows[0] || { total_visits: 0, total_users: 0, total_videos: 0 },
+      success: true,
+      stats: stats.rows[0] || { 
+        total_visits: 0, 
+        total_users: 0, 
+        total_videos: 0, 
+        total_views: 0,
+        total_likes: 0,
+        total_comments: 0
+      },
       userCount: parseInt(users.rows[0].total),
-      videoCount: parseInt(videos.rows[0].total)
+      adminCount: parseInt(admins.rows[0].total),
+      videoCount: parseInt(videos.rows[0].total),
+      commentCount: parseInt(comments.rows[0].total),
+      allAdmins: allAdmins.rows,
+      topVideos: topVideos.rows,
+      recentUsers: recentUsers.rows,
+      recentLogs: logs.rows || []
     });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get stats' });
+    console.error('Super stats error:', error);
+    res.status(500).json({ error: 'Failed to get stats: ' + error.message });
   }
 });
 
-// ============ VIDEO UPLOAD - YOUR WORKING VERSION ============
+// ===== ADMIN MY STATS =====
+app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+  try {
+    const videos = await pool.query(
+      'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as total_views, COALESCE(SUM(likes), 0) as total_likes FROM videos WHERE uploader_id = $1 AND is_active = true',
+      [req.user.id]
+    );
+    
+    const totalVideos = parseInt(videos.rows[0].total) || 0;
+    const totalViews = parseInt(videos.rows[0].total_views) || 0;
+    const totalLikes = parseInt(videos.rows[0].total_likes) || 0;
+
+    res.json({
+      success: true,
+      stats: {
+        totalVideos,
+        totalViews,
+        totalLikes,
+        averageViews: totalVideos > 0 ? Math.round(totalViews / totalVideos) : 0
+      }
+    });
+  } catch (error) {
+    console.error('My stats error:', error);
+    res.status(500).json({ error: 'Failed to get stats: ' + error.message });
+  }
+});
+
+// ===== ADMIN MY VIDEOS =====
+app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ success: true, videos: result.rows });
+  } catch (error) {
+    console.error('My videos error:', error);
+    res.status(500).json({ error: 'Failed to get your videos: ' + error.message });
+  }
+});
+
+// ============ VIDEO UPLOAD - YOUR EXACT WORKING VERSION ============
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -475,6 +561,8 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
       [title, description || '', videoId]
     );
     
+    await logUserActivity(req.user.id, 'edit_video', { videoId, title }, req);
+    
     res.json({ success: true, video: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update video' });
@@ -503,6 +591,8 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
     }
 
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
+    await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete video' });
@@ -516,6 +606,9 @@ app.post('/api/videos/:id/like', async (req, res) => {
     const { action } = req.body;
     const field = action === 'like' ? 'likes' : 'dislikes';
     await pool.query(`UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`, [videoId]);
+    if (action === 'like') {
+      await pool.query('UPDATE website_stats SET total_likes = total_likes + 1');
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to process' });
@@ -536,6 +629,8 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       [videoId, username.trim(), comment.trim()]
     );
     
+    await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
+    
     res.json({ success: true, comment: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add comment: ' + error.message });
@@ -552,40 +647,12 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
-// ============ MY VIDEOS ============
-app.get('/api/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM videos WHERE uploader_id = $1 ORDER BY created_at DESC',
-      [req.user.id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get your videos' });
-  }
-});
-
-app.get('/api/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as views FROM videos WHERE uploader_id = $1',
-      [req.user.id]
-    );
-    res.json({
-      totalVideos: parseInt(result.rows[0].total) || 0,
-      totalViews: parseInt(result.rows[0].views) || 0
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get stats' });
-  }
-});
-
-// ============ SERVE FRONTEND ============
+// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ============ START SERVER ============
+// Start server
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDatabase();
