@@ -13,7 +13,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============ DATABASE CONNECTION ============
+// Database connection
 const pool = new Pool({
   user: 'neondb_owner',
   password: 'npg_Cb7XtKr0BIoN',
@@ -33,7 +33,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ MIDDLEWARE ============
+// Middleware
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '500mb' }));
@@ -42,12 +42,12 @@ app.use(compression());
 app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
-// ============ CREATE DIRECTORIES ============
+// Create directories
 ['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER CONFIG ============
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -73,7 +73,7 @@ const upload = multer({
   }
 });
 
-// ============ INIT DATABASE ============
+// Init database
 async function initDatabase() {
   try {
     await pool.query(`
@@ -148,7 +148,7 @@ async function initDatabase() {
   }
 }
 
-// ============ AUTH MIDDLEWARE ============
+// Auth middleware
 const auth = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
