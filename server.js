@@ -73,11 +73,25 @@ const upload = multer({
   }
 });
 
-// Init database
+// Init database with proper schema
 async function initDatabase() {
   try {
+    // ===== FIX: Drop and recreate tables in correct order =====
+    
+    // Drop tables in correct order (child tables first)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      DROP TABLE IF EXISTS user_actions CASCADE;
+      DROP TABLE IF EXISTS comments CASCADE;
+      DROP TABLE IF EXISTS user_logs CASCADE;
+      DROP TABLE IF EXISTS videos CASCADE;
+      DROP TABLE IF EXISTS website_stats CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `);
+    console.log('✅ Dropped existing tables');
+
+    // Users table
+    await pool.query(`
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -87,9 +101,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Users table created');
 
+    // Videos table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS videos (
+      CREATE TABLE videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
@@ -106,9 +122,11 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
+    console.log('✅ Videos table created');
 
+    // ===== FIX: Comments table with username column =====
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS comments (
+      CREATE TABLE comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         username VARCHAR(255) NOT NULL,
@@ -116,22 +134,26 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Comments table created with username column');
 
+    // ===== FIX: User actions with ON DELETE CASCADE =====
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_actions (
+      CREATE TABLE user_actions (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        video_id INTEGER REFERENCES videos(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         action_type VARCHAR(50),
         action_data TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User actions table created with CASCADE');
 
+    // User logs table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_logs (
+      CREATE TABLE user_logs (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         ip_address VARCHAR(45),
         user_agent TEXT,
         action VARCHAR(255),
@@ -139,9 +161,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User logs table created');
 
+    // Website stats table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS website_stats (
+      CREATE TABLE website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
         total_users INTEGER DEFAULT 0,
@@ -151,6 +175,7 @@ async function initDatabase() {
         total_comments INTEGER DEFAULT 0
       )
     `);
+    console.log('✅ Website stats table created');
 
     // Create Super Admin
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
@@ -534,6 +559,7 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
     
+    // ===== FIX: Get comments with username =====
     const commentsResult = await pool.query(
       'SELECT id, username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
@@ -577,7 +603,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
   }
 });
 
-// ============ DELETE VIDEO - FIXED ============
+// ============ DELETE VIDEO - FIXED WITH CASCADE ============
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -624,7 +650,7 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
       // Continue even if file deletion fails - we still want to remove from database
     }
     
-    // Delete from database
+    // ===== FIX: Delete from database (CASCADE will handle user_actions) =====
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
     
     // Update stats
@@ -664,6 +690,7 @@ app.post('/api/videos/:id/like', async (req, res) => {
   }
 });
 
+// ===== FIX: Comment route =====
 app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -673,6 +700,7 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       return res.status(400).json({ error: 'Name and comment required' });
     }
 
+    // ===== FIX: Insert comment with username =====
     const result = await pool.query(
       'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING id, username, comment, created_at',
       [videoId, username.trim(), comment.trim()]
