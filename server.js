@@ -101,7 +101,9 @@ async function initDatabase() {
         likes INTEGER DEFAULT 0,
         dislikes INTEGER DEFAULT 0,
         share_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        file_size INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN DEFAULT true
       )
     `);
 
@@ -116,28 +118,56 @@ async function initDatabase() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_actions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        video_id INTEGER REFERENCES videos(id),
+        action_type VARCHAR(50),
+        action_data TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        action VARCHAR(255),
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
         total_users INTEGER DEFAULT 0,
-        total_videos INTEGER DEFAULT 0
+        total_videos INTEGER DEFAULT 0,
+        total_views INTEGER DEFAULT 0,
+        total_likes INTEGER DEFAULT 0,
+        total_comments INTEGER DEFAULT 0
       )
     `);
 
+    // Create Super Admin
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
     
     await pool.query(
-      `INSERT INTO users (username, password, secret_code, role) 
-       VALUES ($1, $2, $3, 'super_admin') 
+      `INSERT INTO users (username, password, secret_code, role, heard_from) 
+       VALUES ($1, $2, $3, 'super_admin', 'system') 
        ON CONFLICT (username) DO NOTHING`,
       ['OWNER_MPC', hashedPassword, hashedSecret]
     );
 
-    await pool.query(
-      `INSERT INTO website_stats (total_visits, total_users, total_videos) 
-       SELECT 0, 0, 0 WHERE NOT EXISTS (SELECT 1 FROM website_stats)`
-    );
+    await pool.query(`
+      INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
+      SELECT 0, 0, 0, 0, 0, 0 
+      WHERE NOT EXISTS (SELECT 1 FROM website_stats)
+    `);
 
     console.log('✅ Database ready');
     console.log('👑 Super Admin: OWNER_MPC');
@@ -149,7 +179,7 @@ async function initDatabase() {
 }
 
 // Auth middleware
-const auth = async (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
@@ -162,6 +192,30 @@ const auth = async (req, res, next) => {
     res.status(403).json({ error: 'Invalid token' });
   }
 };
+
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+};
+
+async function logUserActivity(userId, action, details, req) {
+  try {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    await pool.query(
+      `INSERT INTO user_logs (user_id, ip_address, user_agent, action, details) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, ip, userAgent, action, JSON.stringify(details || {})]
+    );
+  } catch (error) {
+    console.error('Log error:', error.message);
+  }
+}
 
 // ============ AUTH ROUTES ============
 app.post('/api/auth/register', async (req, res) => {
@@ -183,7 +237,7 @@ app.post('/api/auth/register', async (req, res) => {
       [username, hashedPassword, hashedSecret, heardFrom]
     );
     
-    await pool.query('UPDATE website_stats SET total_users = total_users + 1');
+    await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
     
     const token = jwt.sign(
       { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
@@ -229,11 +283,11 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', auth, async (req, res) => {
+app.get('/api/auth/me', authenticate, async (req, res) => {
   res.json({ user: req.user });
 });
 
-app.post('/api/auth/heard-from', auth, async (req, res) => {
+app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   try {
     const { heardFrom } = req.body;
     await pool.query('UPDATE users SET heard_from = $1 WHERE id = $2', [heardFrom, req.user.id]);
@@ -244,12 +298,8 @@ app.post('/api/auth/heard-from', auth, async (req, res) => {
 });
 
 // ============ ADMIN ROUTES ============
-app.post('/api/admin/create', auth, async (req, res) => {
+app.post('/api/admin/create', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only super admin can create admins' });
-    }
-    
     const { username, password, secretCode } = req.body;
     if (!username || !password || !secretCode) {
       return res.status(400).json({ error: 'All fields required' });
@@ -270,11 +320,8 @@ app.post('/api/admin/create', auth, async (req, res) => {
   }
 });
 
-app.get('/api/admin/admins', auth, async (req, res) => {
+app.get('/api/admin/admins', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
     const result = await pool.query("SELECT id, username, role FROM users WHERE role IN ('admin', 'super_admin')");
     res.json(result.rows);
   } catch (error) {
@@ -282,12 +329,8 @@ app.get('/api/admin/admins', auth, async (req, res) => {
   }
 });
 
-app.get('/api/admin/stats', auth, async (req, res) => {
+app.get('/api/admin/stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
     const users = await pool.query('SELECT COUNT(*) as total FROM users');
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
@@ -302,82 +345,119 @@ app.get('/api/admin/stats', auth, async (req, res) => {
   }
 });
 
-// ============ VIDEO ROUTES ============
-app.post('/api/videos/upload', auth, upload.fields([
+// ============ VIDEO UPLOAD - YOUR WORKING VERSION ============
+app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only admins can upload' });
-    }
-
+    console.log('📹 Upload request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+    
     const { title, description } = req.body;
-    if (!title || !req.files?.video) {
-      return res.status(400).json({ error: 'Title and video required' });
+    
+    if (!title || !req.files || !req.files.video) {
+      return res.status(400).json({ error: 'Title and video file are required' });
     }
-
-    const videoPath = '/uploads/videos/' + req.files.video[0].filename;
-    const thumbnailPath = req.files.thumbnail ? '/uploads/thumbnails/' + req.files.thumbnail[0].filename : null;
-
+    
+    const videoFile = req.files.video[0];
+    const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
+    
+    // Check file size (500MB max)
+    if (videoFile.size > 500 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
+    }
+    
+    const videoPath = '/uploads/videos/' + videoFile.filename;
+    const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
+    
+    console.log('📁 Video saved at:', videoPath);
+    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
+    
     const result = await pool.query(
-      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description || '', videoPath, thumbnailPath, req.user.id, req.user.username]
+      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING id, title, description, video_url, thumbnail_url, file_size, created_at`,
+      [title, description || '', videoPath, thumbnailPath, req.user.id, req.user.username, videoFile.size]
     );
-
+    
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
-    res.json({ success: true, video: result.rows[0] });
+    await logUserActivity(req.user.id, 'upload_video', { 
+      videoId: result.rows[0].id, 
+      title: title,
+      fileSize: videoFile.size 
+    }, req);
+    
+    console.log('✅ Video uploaded successfully:', result.rows[0].id);
+    
+    res.json({
+      success: true,
+      message: 'Video uploaded successfully',
+      video: result.rows[0]
+    });
   } catch (error) {
+    console.error('❌ Upload error:', error);
     res.status(500).json({ error: 'Upload failed: ' + error.message });
   }
 });
 
+// ============ VIDEO ROUTES ============
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.*, u.username as uploader_name 
+      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url, 
+             v.views, v.likes, v.dislikes, v.share_count, v.created_at,
+             u.username as uploader_name
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
+      WHERE v.is_active = true 
       ORDER BY v.created_at DESC
     `);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get videos' });
+    console.error('Get videos error:', error);
+    res.status(500).json({ error: 'Failed to get videos: ' + error.message });
   }
 });
 
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+    
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
-    const video = await pool.query(`
+    const videoResult = await pool.query(`
       SELECT v.*, u.username as uploader_name 
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
-      WHERE v.id = $1
+      WHERE v.id = $1 AND v.is_active = true
     `, [videoId]);
     
-    if (!video.rows.length) return res.status(404).json({ error: 'Video not found' });
+    if (videoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
     
-    const comments = await pool.query(
+    const commentsResult = await pool.query(
       'SELECT * FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
     );
     
-    res.json({ ...video.rows[0], comments: comments.rows });
+    res.json({
+      ...videoResult.rows[0],
+      comments: commentsResult.rows
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get video' });
+    console.error('Get video error:', error);
+    res.status(500).json({ error: 'Failed to get video: ' + error.message });
   }
 });
 
-app.put('/api/videos/:id', auth, async (req, res) => {
+app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
     
@@ -401,12 +481,8 @@ app.put('/api/videos/:id', auth, async (req, res) => {
   }
 });
 
-app.delete('/api/videos/:id', auth, async (req, res) => {
+app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
     const videoId = parseInt(req.params.id);
     
     const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
@@ -477,34 +553,24 @@ app.post('/api/videos/:id/share', async (req, res) => {
 });
 
 // ============ MY VIDEOS ============
-app.get('/api/my-videos', auth, async (req, res) => {
+app.get('/api/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    
     const result = await pool.query(
       'SELECT * FROM videos WHERE uploader_id = $1 ORDER BY created_at DESC',
       [req.user.id]
     );
-    
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get your videos' });
   }
 });
 
-app.get('/api/my-stats', auth, async (req, res) => {
+app.get('/api/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    
     const result = await pool.query(
       'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as views FROM videos WHERE uploader_id = $1',
       [req.user.id]
     );
-    
     res.json({
       totalVideos: parseInt(result.rows[0].total) || 0,
       totalViews: parseInt(result.rows[0].views) || 0

@@ -306,12 +306,13 @@
             </div>
         </div>
 
-        <!-- ===== UPLOAD SECTION - NO FORM TAG ===== -->
+        <!-- ===== UPLOAD SECTION ===== -->
         <div id="uploadContent" class="hidden">
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
                 <p class="sub">Share your content with the world (Max 500MB)</p>
                 
+                <!-- NO FORM TAG - Just inputs and button -->
                 <input type="text" id="videoTitle" placeholder="Video Title" required>
                 <textarea id="videoDesc" placeholder="Video Description"></textarea>
                 
@@ -336,7 +337,7 @@
                     <div class="bar"><div class="fill" id="progressFill"></div></div>
                 </div>
                 
-                <!-- CRITICAL: type="button" prevents ANY form submission -->
+                <!-- CRITICAL: type="button" prevents any form submission -->
                 <button type="button" class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
             </div>
         </div>
@@ -708,18 +709,17 @@
             if (currentVideo) window.open(currentVideo.video_url, '_blank');
         }
 
-        // ============================================
-        // UPLOAD VIDEO - THE FINAL WORKING VERSION
-        // ============================================
+        // ============================================================
+        // UPLOAD VIDEO - THE WORKING VERSION
+        // ============================================================
         async function uploadVideo() {
-            console.log('✅✅✅ UPLOAD FUNCTION CALLED! ✅✅✅');
+            console.log('✅ Upload function called!');
             
             const title = document.getElementById('videoTitle').value.trim();
             const description = document.getElementById('videoDesc').value.trim();
             const videoFile = document.getElementById('videoFile').files[0];
             const thumbFile = document.getElementById('thumbFile').files[0];
 
-            // VALIDATION
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Only admins can upload', 'error');
                 return;
@@ -740,14 +740,12 @@
                 return;
             }
 
-            // PREPARE FORM DATA
             const formData = new FormData();
             formData.append('title', title);
             formData.append('description', description);
             formData.append('video', videoFile);
             if (thumbFile) formData.append('thumbnail', thumbFile);
             
-            // SHOW PROGRESS
             const progressDiv = document.getElementById('uploadProgress');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
@@ -758,10 +756,8 @@
             uploadBtn.textContent = 'Uploading...';
 
             try {
-                // CREATE XMLHttpRequest WITH PROGRESS
                 const xhr = new XMLHttpRequest();
                 
-                // PROGRESS TRACKING
                 xhr.upload.addEventListener('progress', function(e) {
                     if (e.lengthComputable) {
                         const pct = Math.round((e.loaded / e.total) * 100);
@@ -771,7 +767,6 @@
                     }
                 });
 
-                // CREATE PROMISE FOR UPLOAD
                 const uploadPromise = new Promise((resolve, reject) => {
                     xhr.open('POST', API + '/videos/upload', true);
                     xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('token'));
@@ -802,14 +797,12 @@
                     xhr.send(formData);
                 });
 
-                // WAIT FOR UPLOAD TO COMPLETE
                 const data = await uploadPromise;
                 console.log('📦 Upload response:', data);
 
                 if (data.success) {
                     showToast('✅ Video uploaded successfully! 🎉');
                     
-                    // RESET FORM
                     document.getElementById('videoTitle').value = '';
                     document.getElementById('videoDesc').value = '';
                     document.getElementById('videoFile').value = '';
@@ -818,7 +811,6 @@
                     document.getElementById('thumbFileName').style.display = 'none';
                     document.querySelectorAll('.file-input').forEach(el => el.classList.remove('has-file'));
                     
-                    // GO HOME AND RELOAD
                     showHome();
                     loadVideos();
                 } else {
@@ -828,7 +820,6 @@
                 console.error('❌ Upload error:', error);
                 showToast('❌ ' + (error.message || 'Upload failed'), 'error');
             } finally {
-                // RESET UI
                 progressDiv.style.display = 'none';
                 progressFill.style.width = '0%';
                 progressText.textContent = '0%';
