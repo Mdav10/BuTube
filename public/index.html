@@ -110,17 +110,17 @@
         .upload-container .btn-upload { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
         .upload-container .btn-upload:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
 
-        /* ===== ADVANCED ADMIN DASHBOARD ===== */
+        /* ===== SUPER ADMIN DASHBOARD ===== */
         .admin-container { padding: 20px 0; }
         .admin-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
         .admin-container .sub { color: #888; margin-bottom: 24px; }
         
-        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
-        .admin-stat-card { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
+        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .admin-stat-card { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
         .admin-stat-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
         .admin-stat-card .icon { font-size: 2rem; color: #ff6b6b; margin-bottom: 8px; }
-        .admin-stat-card .number { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .admin-stat-card .label { color: #888; font-size: 0.9rem; margin-top: 4px; }
+        .admin-stat-card .number { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .admin-stat-card .label { color: #888; font-size: 0.85rem; margin-top: 4px; }
         
         .admin-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
         .admin-section { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
@@ -140,6 +140,25 @@
         .logs-container .log-entry { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; color: #aaa; display: flex; justify-content: space-between; align-items: center; }
         .logs-container .log-entry strong { color: #fff; }
         .logs-container .log-entry .time { color: #666; font-size: 0.75rem; }
+
+        /* ===== ADMIN DASHBOARD (My Videos) ===== */
+        .my-videos-container { padding: 20px 0; }
+        .my-videos-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
+        .my-videos-container .sub { color: #888; margin-bottom: 24px; }
+        
+        .my-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .my-stat-card { background: #1a1a1a; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .my-stat-card .number { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .my-stat-card .label { color: #888; font-size: 0.85rem; margin-top: 4px; }
+        
+        .my-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        .my-video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+        .my-video-card .thumbnail { width: 100%; height: 160px; object-fit: cover; background: #111; }
+        .my-video-card .info { padding: 14px; }
+        .my-video-card .info .title { font-weight: 600; margin-bottom: 4px; }
+        .my-video-card .info .meta { font-size: 0.8rem; color: #888; }
+        .my-video-card .delete-btn { position: absolute; top: 10px; right: 10px; background: rgba(255,0,0,0.8); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; }
+        .my-video-card .delete-btn:hover { background: #ff0000; transform: scale(1.1); }
 
         .join-container { max-width: 600px; margin: 40px auto; background: #1a1a1a; padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
         .join-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
@@ -176,6 +195,7 @@
             .nav-links { justify-content: center; }
             .nav-links a { font-size: 0.8rem; padding: 6px 12px; }
             .video-grid { grid-template-columns: 1fr; }
+            .my-videos-grid { grid-template-columns: 1fr; }
             .auth-box { padding: 24px; }
             .heard-box { padding: 24px 20px; margin: 10px; max-height: 85vh; }
             .heard-box .options { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -186,6 +206,7 @@
             .heard-box .btn-actions .btn-skip { width: 100%; padding: 12px; font-size: 0.9rem; min-width: unset; }
             .admin-sections { grid-template-columns: 1fr; }
             .admin-stats-grid { grid-template-columns: 1fr 1fr; }
+            .my-stats-grid { grid-template-columns: 1fr 1fr; }
             .join-container .share-buttons { grid-template-columns: 1fr; }
             .player-actions { justify-content: center; }
         }
@@ -208,6 +229,7 @@
                 <a href="#" onclick="showHome()" class="active" id="navHome"><i class="fas fa-home"></i> Home</a>
                 <a href="#" onclick="showUpload()" id="navUpload" style="display:none;"><i class="fas fa-upload"></i> Upload</a>
                 <a href="#" onclick="showAdmin()" id="navAdmin" style="display:none;"><i class="fas fa-crown"></i> Admin</a>
+                <a href="#" onclick="showMyVideos()" id="navMyVideos" style="display:none;"><i class="fas fa-video"></i> My Videos</a>
                 <a href="#" onclick="toggleAuth()" id="navAuth"><i class="fas fa-user"></i> <span id="authText">Login</span></a>
                 <a href="#" onclick="showJoinUs()" class="join-btn"><i class="fas fa-handshake"></i> Join Us</a>
             </div>
@@ -290,16 +312,18 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <!-- Home -->
         <div id="homeContent">
             <div class="video-grid" id="videoGrid">
                 <div class="loading"><i class="fas fa-spinner"></i><br>Loading videos...</div>
             </div>
         </div>
 
+        <!-- Upload -->
         <div id="uploadContent" class="hidden">
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
-                <p class="sub">Share your content with the world</p>
+                <p class="sub">Share your content with the world (Max 500MB)</p>
                 <form id="uploadForm" onsubmit="uploadVideo(event)">
                     <input type="text" id="videoTitle" placeholder="Video Title" required>
                     <textarea id="videoDesc" placeholder="Video Description"></textarea>
@@ -320,18 +344,15 @@
             </div>
         </div>
 
-        <!-- ADVANCED ADMIN DASHBOARD -->
+        <!-- SUPER ADMIN DASHBOARD -->
         <div id="adminContent" class="hidden">
             <div class="admin-container">
-                <h2>👑 Admin Dashboard</h2>
-                <p class="sub">Welcome back, <span id="adminName">Admin</span>!</p>
+                <h2>👑 Super Admin Dashboard</h2>
+                <p class="sub">Welcome, <span id="adminName">Admin</span>! Full system control</p>
                 
-                <!-- Stats -->
                 <div class="admin-stats-grid" id="statsGrid"></div>
                 
-                <!-- Sections -->
                 <div class="admin-sections">
-                    <!-- Create Admin -->
                     <div class="admin-section">
                         <h3><i class="fas fa-user-plus"></i> Create Admin Account</h3>
                         <form onsubmit="createAdmin(event)">
@@ -342,20 +363,22 @@
                         </form>
                     </div>
                     
-                    <!-- Top Videos -->
                     <div class="admin-section">
-                        <h3><i class="fas fa-fire"></i> Top Videos</h3>
-                        <div id="topVideosList">Loading...</div>
+                        <h3><i class="fas fa-users"></i> All Admins</h3>
+                        <div id="allAdminsList">Loading...</div>
                     </div>
                 </div>
                 
-                <!-- Recent Users -->
+                <div class="admin-section" style="margin-bottom:20px;">
+                    <h3><i class="fas fa-fire"></i> Top Videos</h3>
+                    <div id="topVideosList">Loading...</div>
+                </div>
+                
                 <div class="admin-section" style="margin-bottom:20px;">
                     <h3><i class="fas fa-users"></i> Recent Users</h3>
                     <div id="recentUsersList">Loading...</div>
                 </div>
                 
-                <!-- Logs -->
                 <div class="logs-container">
                     <h3 style="margin-bottom:12px;">📋 Recent Activity</h3>
                     <div id="logsList">Loading...</div>
@@ -363,6 +386,38 @@
             </div>
         </div>
 
+        <!-- ADMIN DASHBOARD (My Videos) -->
+        <div id="myVideosContent" class="hidden">
+            <div class="my-videos-container">
+                <h2>📹 My Videos</h2>
+                <p class="sub">Manage your uploaded videos</p>
+                
+                <div class="my-stats-grid" id="myStatsGrid">
+                    <div class="my-stat-card">
+                        <div class="number" id="myTotalVideos">0</div>
+                        <div class="label">Total Videos</div>
+                    </div>
+                    <div class="my-stat-card">
+                        <div class="number" id="myTotalViews">0</div>
+                        <div class="label">Total Views</div>
+                    </div>
+                    <div class="my-stat-card">
+                        <div class="number" id="myTotalLikes">0</div>
+                        <div class="label">Total Likes</div>
+                    </div>
+                    <div class="my-stat-card">
+                        <div class="number" id="myAvgViews">0</div>
+                        <div class="label">Average Views</div>
+                    </div>
+                </div>
+                
+                <div class="my-videos-grid" id="myVideosGrid">
+                    <div class="loading"><i class="fas fa-spinner"></i><br>Loading your videos...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Us -->
         <div id="joinContent" class="hidden">
             <div class="join-container">
                 <h2>🤝 Join Us & Make Money!</h2>
@@ -479,7 +534,8 @@
             localStorage.removeItem('token');
             currentUser = null;
             updateUI();
-            loadVideos();
+            // Go to home page after logout
+            showHome();
             showToast('Logged out successfully');
         }
 
@@ -519,7 +575,6 @@
                     throw new Error(data.error || 'Failed to update');
                 }
 
-                const data = await res.json();
                 document.getElementById('heardOverlay').classList.remove('show');
                 
                 currentUser.heardFrom = selectedHeard;
@@ -543,22 +598,34 @@
             const navAuth = document.getElementById('navAuth');
             const navUpload = document.getElementById('navUpload');
             const navAdmin = document.getElementById('navAdmin');
+            const navMyVideos = document.getElementById('navMyVideos');
 
             if (currentUser) {
-                authText.textContent = 'Logout (' + currentUser.username + ')';
+                authText.textContent = 'Logout';
                 navAuth.onclick = logout;
-                if (['admin', 'super_admin'].includes(currentUser.role)) {
+                
+                if (currentUser.role === 'super_admin') {
+                    // Super Admin sees Upload, Admin (full dashboard)
                     navUpload.style.display = 'inline';
                     navAdmin.style.display = 'inline';
+                    navMyVideos.style.display = 'none';
+                } else if (currentUser.role === 'admin') {
+                    // Regular Admin sees Upload, My Videos
+                    navUpload.style.display = 'inline';
+                    navAdmin.style.display = 'none';
+                    navMyVideos.style.display = 'inline';
                 } else {
+                    // Regular user
                     navUpload.style.display = 'none';
                     navAdmin.style.display = 'none';
+                    navMyVideos.style.display = 'none';
                 }
             } else {
                 authText.textContent = 'Login';
                 navAuth.onclick = toggleAuth;
                 navUpload.style.display = 'none';
                 navAdmin.style.display = 'none';
+                navMyVideos.style.display = 'none';
             }
         }
 
@@ -753,6 +820,7 @@
             window.open(currentVideo.video_url, '_blank');
         }
 
+        // ===== UPLOAD VIDEO =====
         async function uploadVideo(e) {
             e.preventDefault();
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
@@ -768,6 +836,12 @@
 
             if (!videoFile) {
                 showToast('Please select a video file', 'error');
+                return;
+            }
+
+            // Check file size (500MB)
+            if (videoFile.size > 500 * 1024 * 1024) {
+                showToast('Video file exceeds 500MB limit', 'error');
                 return;
             }
 
@@ -793,10 +867,10 @@
             }
         }
 
-        // ===== ADVANCED ADMIN DASHBOARD =====
+        // ===== SUPER ADMIN DASHBOARD =====
         async function showAdmin() {
-            if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-                showToast('Access denied. Admin only.', 'error');
+            if (!currentUser || currentUser.role !== 'super_admin') {
+                showToast('Access denied. Super Admin only.', 'error');
                 return;
             }
 
@@ -806,7 +880,7 @@
             document.getElementById('adminName').textContent = currentUser.username;
 
             try {
-                const res = await fetch(API + '/admin/stats', {
+                const res = await fetch(API + '/admin/super-stats', {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
                 });
 
@@ -822,6 +896,11 @@
                         <div class="label">Total Users</div>
                     </div>
                     <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-user-shield"></i></div>
+                        <div class="number">${data.adminCount || 0}</div>
+                        <div class="label">Admins</div>
+                    </div>
+                    <div class="admin-stat-card">
                         <div class="icon"><i class="fas fa-video"></i></div>
                         <div class="number">${data.videoCount || 0}</div>
                         <div class="label">Total Videos</div>
@@ -834,19 +913,27 @@
                     <div class="admin-stat-card">
                         <div class="icon"><i class="fas fa-comment"></i></div>
                         <div class="number">${data.commentCount || 0}</div>
-                        <div class="label">Total Comments</div>
-                    </div>
-                    <div class="admin-stat-card">
-                        <div class="icon"><i class="fas fa-heart"></i></div>
-                        <div class="number">${data.stats?.total_likes || 0}</div>
-                        <div class="label">Total Likes</div>
+                        <div class="label">Comments</div>
                     </div>
                     <div class="admin-stat-card">
                         <div class="icon"><i class="fas fa-chart-line"></i></div>
                         <div class="number">${data.stats?.total_visits || 0}</div>
-                        <div class="label">Total Visits</div>
+                        <div class="label">Visits</div>
                     </div>
                 `;
+
+                // All Admins
+                const allAdminsList = document.getElementById('allAdminsList');
+                if (data.allAdmins && data.allAdmins.length) {
+                    allAdminsList.innerHTML = data.allAdmins.map(a => `
+                        <div class="list-item">
+                            <span class="name">${a.username}</span>
+                            <span class="meta">${a.role} • ${new Date(a.created_at).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    allAdminsList.innerHTML = '<p style="color:#666;padding:10px 0;">No admins found</p>';
+                }
 
                 // Top Videos
                 const topVideosList = document.getElementById('topVideosList');
@@ -893,7 +980,7 @@
             }
         }
 
-        // CREATE ADMIN WITH SECRET CODE
+        // ===== CREATE ADMIN (Super Admin only) =====
         async function createAdmin(e) {
             e.preventDefault();
             if (!currentUser || currentUser.role !== 'super_admin') {
@@ -938,7 +1025,7 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to create admin');
 
-                showToast(`✅ Admin "${username}" created! Secret: ${secretCode}`);
+                showToast(`✅ Admin "${username}" created! Secret Code: ${secretCode}`);
                 document.getElementById('newAdminUser').value = '';
                 document.getElementById('newAdminPass').value = '';
                 document.getElementById('newAdminSecret').value = '';
@@ -950,6 +1037,97 @@
             }
         }
 
+        // ===== ADMIN MY VIDEOS DASHBOARD =====
+        async function showMyVideos() {
+            if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+                showToast('Access denied. Admin only.', 'error');
+                return;
+            }
+
+            hideAll();
+            document.getElementById('myVideosContent').classList.remove('hidden');
+            document.getElementById('navMyVideos').classList.add('active');
+
+            try {
+                // Get stats
+                const statsRes = await fetch(API + '/admin/my-stats', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const statsData = await statsRes.json();
+                
+                if (statsData.success) {
+                    document.getElementById('myTotalVideos').textContent = statsData.stats.totalVideos || 0;
+                    document.getElementById('myTotalViews').textContent = statsData.stats.totalViews || 0;
+                    document.getElementById('myTotalLikes').textContent = statsData.stats.totalLikes || 0;
+                    document.getElementById('myAvgViews').textContent = statsData.stats.averageViews || 0;
+                }
+
+                // Get my videos
+                const videosRes = await fetch(API + '/admin/my-videos', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const videosData = await videosRes.json();
+                
+                const grid = document.getElementById('myVideosGrid');
+                
+                if (!videosData.videos || !videosData.videos.length) {
+                    grid.innerHTML = `
+                        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#666;">
+                            <i class="fas fa-video" style="font-size:3rem;margin-bottom:16px;color:#333;"></i>
+                            <h3 style="color:#fff;">No videos uploaded yet</h3>
+                            <p>Upload your first video now!</p>
+                            <button onclick="showUpload()" style="margin-top:16px;padding:12px 24px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-weight:600;cursor:pointer;">
+                                Upload Video
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                grid.innerHTML = videosData.videos.map(v => `
+                    <div class="my-video-card">
+                        <img src="${v.thumbnail_url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%231a1a1a"/%3E%3Ctext x="200" y="110" text-anchor="middle" fill="%23666" font-size="16"%3ENo Thumbnail%3C/text%3E%3C/svg%3E'}" 
+                             class="thumbnail"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%231a1a1a"/%3E%3Ctext x="200" y="110" text-anchor="middle" fill="%23666" font-size="16"%3ENo Thumbnail%3C/text%3E%3C/svg%3E'">
+                        <button class="delete-btn" onclick="deleteMyVideo(${v.id})" title="Delete Video">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <div class="info" onclick="playVideo(${v.id})" style="cursor:pointer;">
+                            <div class="title">${v.title}</div>
+                            <div class="meta">
+                                <span><i class="fas fa-eye"></i> ${v.views || 0}</span>
+                                <span><i class="fas fa-heart"></i> ${v.likes || 0}</span>
+                                <span><i class="fas fa-calendar"></i> ${new Date(v.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showToast('Failed to load your videos: ' + error.message, 'error');
+            }
+        }
+
+        // ===== DELETE MY VIDEO =====
+        async function deleteMyVideo(videoId) {
+            if (!confirm('Are you sure you want to delete this video?')) return;
+            
+            try {
+                const res = await fetch(API + '/videos/' + videoId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to delete');
+                
+                showToast('Video deleted successfully');
+                showMyVideos(); // Refresh the list
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // ===== NAVIGATION =====
         function showHome() {
             hideAll();
             document.getElementById('homeContent').style.display = 'block';
@@ -973,13 +1151,14 @@
         }
 
         function hideAll() {
-            document.querySelectorAll('#homeContent, #uploadContent, #adminContent, #joinContent').forEach(el => {
+            document.querySelectorAll('#homeContent, #uploadContent, #adminContent, #myVideosContent, #joinContent').forEach(el => {
                 if (el.id === 'homeContent') el.style.display = 'none';
                 else el.classList.add('hidden');
             });
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
         }
 
+        // ===== SHARE FUNCTIONS =====
         function shareFacebook() {
             window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href), '_blank');
         }
@@ -1031,9 +1210,9 @@
         if (vid) setTimeout(() => playVideo(vid), 1000);
 
         console.log('🚀 AKABAKUZE loaded!');
-        console.log('👑 Super Admin: OWNER_MPC');
-        console.log('🔑 Password: 08800+_+Owner!');
-        console.log('🔐 Secret: ADMIN_SECRET_2024');
+        console.log('👑 Super Admin: Deleted');
+        console.log('🔑 Password: Deleted');
+        console.log('🔐 Secret: None');
     </script>
 </body>
 </html>
