@@ -310,29 +310,32 @@
             <div class="upload-container">
                 <h2>📹 Upload Video</h2>
                 <p class="sub">Share your content with the world (Max 500MB)</p>
-                <form id="uploadForm">
-                    <input type="text" id="videoTitle" placeholder="Video Title" required>
-                    <textarea id="videoDesc" placeholder="Video Description"></textarea>
-                    <div class="file-input" id="videoFileInput" onclick="document.getElementById('videoFile').click()">
-                        <div class="icon"><i class="fas fa-video"></i></div>
-                        <p>Click to select video file</p>
-                        <small style="color:#666;">MP4, AVI, MOV (Max 500MB)</small>
-                        <div class="filename" id="videoFileName">✅ Selected: <span></span></div>
-                        <input type="file" id="videoFile" accept="video/*" style="display:none;" required onchange="handleFileSelect(this, 'videoFileName')">
-                    </div>
-                    <div class="file-input" id="thumbFileInput" onclick="document.getElementById('thumbFile').click()">
-                        <div class="icon"><i class="fas fa-image"></i></div>
-                        <p>Click to select thumbnail (optional)</p>
-                        <small style="color:#666;">JPG, PNG, GIF</small>
-                        <div class="filename" id="thumbFileName">✅ Selected: <span></span></div>
-                        <input type="file" id="thumbFile" accept="image/*" style="display:none;" onchange="handleFileSelect(this, 'thumbFileName')">
-                    </div>
-                    <div class="progress" id="uploadProgress">
-                        <p>Uploading... <span id="progressText">0%</span></p>
-                        <div class="bar"><div class="fill" id="progressFill"></div></div>
-                    </div>
-                    <button type="button" class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
-                </form>
+                
+                <input type="text" id="videoTitle" placeholder="Video Title" required>
+                <textarea id="videoDesc" placeholder="Video Description"></textarea>
+                
+                <div class="file-input" id="videoFileInput" onclick="document.getElementById('videoFile').click()">
+                    <div class="icon"><i class="fas fa-video"></i></div>
+                    <p>Click to select video file</p>
+                    <small style="color:#666;">MP4, AVI, MOV (Max 500MB)</small>
+                    <div class="filename" id="videoFileName">✅ Selected: <span></span></div>
+                    <input type="file" id="videoFile" accept="video/*" style="display:none;" required onchange="handleFileSelect(this, 'videoFileName')">
+                </div>
+                
+                <div class="file-input" id="thumbFileInput" onclick="document.getElementById('thumbFile').click()">
+                    <div class="icon"><i class="fas fa-image"></i></div>
+                    <p>Click to select thumbnail (optional)</p>
+                    <small style="color:#666;">JPG, PNG, GIF</small>
+                    <div class="filename" id="thumbFileName">✅ Selected: <span></span></div>
+                    <input type="file" id="thumbFile" accept="image/*" style="display:none;" onchange="handleFileSelect(this, 'thumbFileName')">
+                </div>
+                
+                <div class="progress" id="uploadProgress">
+                    <p>Uploading... <span id="progressText">0%</span></p>
+                    <div class="bar"><div class="fill" id="progressFill"></div></div>
+                </div>
+                
+                <button class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
             </div>
         </div>
 
@@ -775,7 +778,10 @@
 
                 if (result.success) {
                     showToast('Video uploaded successfully! 🎉');
-                    document.getElementById('uploadForm').reset();
+                    document.getElementById('videoTitle').value = '';
+                    document.getElementById('videoDesc').value = '';
+                    document.getElementById('videoFile').value = '';
+                    document.getElementById('thumbFile').value = '';
                     document.getElementById('videoFileName').style.display = 'none';
                     document.getElementById('thumbFileName').style.display = 'none';
                     document.querySelectorAll('.file-input').forEach(el => el.classList.remove('has-file'));
