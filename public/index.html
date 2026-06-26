@@ -7,20 +7,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* Reset and Base */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ff6b6b, #ee5a24); border-radius: 10px; }
-        
-        /* Scrolling Bar */
+
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 10px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .scrolling-text { animation: scrollText 25s linear infinite; white-space: nowrap; font-weight: 700; font-size: 1rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); letter-spacing: 2px; }
         @keyframes scrollText { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-        
-        /* Navbar */
+
         .navbar { position: fixed; top: 45px; left: 0; right: 0; z-index: 9998; background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; }
         .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
@@ -32,11 +29,9 @@
         .join-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important; color: #fff !important; font-weight: 700 !important; animation: pulseBtn 2s ease-in-out infinite; padding: 8px 20px !important; }
         @keyframes pulseBtn { 0%,100% { box-shadow: 0 0 20px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,107,0.6); } }
         .join-btn:hover { transform: scale(1.05) !important; }
-        
-        /* Main Content */
+
         .main-content { margin-top: 110px; padding: 20px; max-width: 1400px; margin-left: auto; margin-right: auto; }
-        
-        /* Video Grid */
+
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; padding: 20px 0; }
         .video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; transition: all 0.4s ease; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); }
         .video-card:hover { transform: translateY(-10px); box-shadow: 0 20px 60px rgba(0,0,0,0.8); border-color: rgba(255,107,107,0.3); }
@@ -44,7 +39,7 @@
         .video-info { padding: 16px; }
         .video-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
         .video-meta { font-size: 0.85rem; color: #888; display: flex; align-items: center; gap: 8px; }
-        
+
         /* Auth Overlay */
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
         .auth-overlay.show { display: flex; }
@@ -52,7 +47,7 @@
         .auth-box h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
         .auth-box .subtitle { color: #888; margin-bottom: 30px; font-size: 0.95rem; }
         .auth-box input { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 1rem; transition: all 0.3s ease; font-family: inherit; }
-        .auth-box input:focus { outline: none; border-color: #ff6b6b; background: rgba(255,255,255,0.06); box-shadow: 0 0 30px rgba(255,107,107,0.1); }
+        .auth-box input:focus { outline: none; border-color: #ff6b6b; background: rgba(255,255,255,0.06); }
         .auth-box input::placeholder { color: #555; }
         .auth-box .btn-primary { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 6px; }
         .auth-box .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
@@ -60,22 +55,29 @@
         .auth-box .auth-toggle a { color: #ff6b6b; text-decoration: none; font-weight: 600; cursor: pointer; }
         .auth-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; }
         .auth-close:hover { background: rgba(255,255,255,0.1); transform: rotate(90deg); }
-        
-        /* Heard From Modal */
-        .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
+
+        /* Heard From Modal - FIXED */
+        .heard-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(30px); z-index: 99998; justify-content: center; align-items: center; padding: 20px; }
         .heard-overlay.show { display: flex; }
-        .heard-box { background: #1a1a1a; border-radius: 24px; padding: 40px; max-width: 440px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); }
-        .heard-box h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
-        .heard-box .sub { color: #888; margin-bottom: 24px; }
-        .heard-box .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .heard-box .option { padding: 16px; border: 2px solid rgba(255,255,255,0.05); border-radius: 12px; background: rgba(255,255,255,0.02); color: #aaa; cursor: pointer; transition: all 0.3s ease; text-align: center; font-weight: 500; }
+        .heard-box { background: #1a1a1a; border-radius: 28px; padding: 50px 40px; max-width: 480px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 50px 100px rgba(0,0,0,0.9); position: relative; }
+        .heard-box .heard-header { text-align: center; margin-bottom: 30px; }
+        .heard-box .heard-header .icon { font-size: 3.5rem; color: #ff6b6b; margin-bottom: 12px; }
+        .heard-box .heard-header h2 { font-size: 1.8rem; font-weight: 800; }
+        .heard-box .heard-header p { color: #888; margin-top: 6px; font-size: 0.95rem; }
+        .heard-box .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 25px; }
+        .heard-box .option { padding: 16px 12px; border: 2px solid rgba(255,255,255,0.06); border-radius: 14px; background: rgba(255,255,255,0.02); color: #aaa; cursor: pointer; transition: all 0.3s ease; text-align: center; font-weight: 500; }
         .heard-box .option:hover { border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.05); color: #fff; transform: translateY(-2px); }
-        .heard-box .option.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.1); color: #fff; box-shadow: 0 0 30px rgba(255,107,107,0.1); }
-        .heard-box .option i { display: block; font-size: 1.8rem; margin-bottom: 8px; }
-        .heard-box .btn-submit { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
-        .heard-box .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
-        .heard-box .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        
+        .heard-box .option.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.12); color: #fff; box-shadow: 0 0 40px rgba(255,107,107,0.08); }
+        .heard-box .option i { display: block; font-size: 1.8rem; margin-bottom: 6px; color: #ff6b6b; }
+        .heard-box .option.selected i { color: #ff6b6b; }
+        .heard-box .option .label { font-size: 0.85rem; }
+        .heard-box .btn-actions { display: flex; gap: 12px; }
+        .heard-box .btn-actions .btn-submit { flex: 1; padding: 16px; border: none; border-radius: 14px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
+        .heard-box .btn-actions .btn-submit:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .heard-box .btn-actions .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .heard-box .btn-actions .btn-skip { padding: 16px 24px; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: transparent; color: #888; cursor: pointer; transition: all 0.3s ease; font-weight: 500; }
+        .heard-box .btn-actions .btn-skip:hover { border-color: rgba(255,255,255,0.2); color: #fff; }
+
         /* Player */
         .player-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 99997; padding: 20px; overflow-y: auto; }
         .player-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
@@ -100,8 +102,7 @@
         .add-comment input:focus { outline: none; border-color: #ff6b6b; }
         .add-comment button { padding: 12px 24px; border: none; border-radius: 50px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
         .add-comment button:hover { transform: scale(1.05); }
-        
-        /* Upload */
+
         .upload-container { max-width: 600px; margin: 40px auto; background: #1a1a1a; padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
         .upload-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
         .upload-container .sub { color: #888; margin-bottom: 30px; }
@@ -112,8 +113,7 @@
         .upload-container .file-input:hover { border-color: #ff6b6b; background: rgba(255,107,107,0.02); }
         .upload-container .btn-upload { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
         .upload-container .btn-upload:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
-        
-        /* Admin */
+
         .admin-container { padding: 20px 0; }
         .admin-container h2 { font-size: 1.8rem; margin-bottom: 24px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 30px; }
@@ -129,8 +129,7 @@
         .logs-container { background: #1a1a1a; padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; }
         .logs-container .log-entry { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; color: #aaa; }
         .logs-container .log-entry strong { color: #fff; }
-        
-        /* Join */
+
         .join-container { max-width: 600px; margin: 40px auto; background: #1a1a1a; padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
         .join-container h2 { font-size: 1.8rem; margin-bottom: 8px; }
         .join-container .sub { color: #888; margin-bottom: 30px; }
@@ -141,15 +140,13 @@
         .join-container .share-buttons button:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
         .join-container .btn-request { width: 100%; padding: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
         .join-container .btn-request:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
-        
-        /* Footer */
+
         .footer { background: #0a0a0a; padding: 30px 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.03); margin-top: 60px; }
         .footer p { color: #666; font-size: 0.9rem; }
         .footer .social { display: flex; justify-content: center; gap: 20px; margin-top: 12px; }
         .footer .social a { color: #555; font-size: 1.4rem; transition: all 0.3s ease; }
         .footer .social a:hover { color: #ff6b6b; transform: translateY(-3px); }
-        
-        /* Toast */
+
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a1a1a; padding: 16px 28px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 20px 60px rgba(0,0,0,0.8); z-index: 999999; display: none; align-items: center; gap: 12px; font-weight: 500; max-width: 90%; }
         .toast.show { display: flex; animation: slideUp 0.5s ease; }
         @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
@@ -157,21 +154,24 @@
         .toast.success i { color: #00b894; }
         .toast.error { border-color: #ff6b6b; }
         .toast.error i { color: #ff6b6b; }
-        
+
         .hidden { display: none !important; }
         .loading { text-align: center; padding: 60px 20px; color: #666; }
         .loading i { font-size: 3rem; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        
+
         @media (max-width: 768px) {
             .nav-container { flex-direction: column; align-items: stretch; gap: 8px; }
             .nav-links { justify-content: center; }
             .nav-links a { font-size: 0.8rem; padding: 6px 12px; }
             .video-grid { grid-template-columns: 1fr; }
             .auth-box { padding: 24px; }
+            .heard-box { padding: 30px 20px; }
             .heard-box .options { grid-template-columns: 1fr; }
+            .heard-box .btn-actions { flex-direction: column; }
             .join-container .share-buttons { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
+            .admin-actions input { min-width: 100%; }
         }
     </style>
 </head>
@@ -223,32 +223,48 @@
         </div>
     </div>
 
-    <!-- Heard From Modal -->
+    <!-- Heard From Modal - FIXED -->
     <div class="heard-overlay" id="heardOverlay">
         <div class="heard-box">
-            <h2>👋 Welcome!</h2>
-            <p class="sub">How did you hear about AKABAKUZE?</p>
+            <div class="heard-header">
+                <div class="icon">🎯</div>
+                <h2>How did you find us?</h2>
+                <p>Help us understand our community better</p>
+            </div>
             <div class="options" id="heardOptions">
                 <div class="option" data-value="friend" onclick="selectHeard('friend')">
-                    <i class="fas fa-user-friends"></i> By Friend
+                    <i class="fas fa-user-friends"></i>
+                    <div class="label">By Friend</div>
                 </div>
                 <div class="option" data-value="self" onclick="selectHeard('self')">
-                    <i class="fas fa-search"></i> Self Research
+                    <i class="fas fa-search"></i>
+                    <div class="label">Self Research</div>
                 </div>
                 <div class="option" data-value="facebook" onclick="selectHeard('facebook')">
-                    <i class="fab fa-facebook"></i> On Facebook
+                    <i class="fab fa-facebook"></i>
+                    <div class="label">On Facebook</div>
                 </div>
                 <div class="option" data-value="instagram" onclick="selectHeard('instagram')">
-                    <i class="fab fa-instagram"></i> On Instagram
+                    <i class="fab fa-instagram"></i>
+                    <div class="label">On Instagram</div>
                 </div>
                 <div class="option" data-value="twitter" onclick="selectHeard('twitter')">
-                    <i class="fab fa-twitter"></i> On Twitter
+                    <i class="fab fa-twitter"></i>
+                    <div class="label">On Twitter</div>
                 </div>
                 <div class="option" data-value="other" onclick="selectHeard('other')">
-                    <i class="fas fa-ellipsis-h"></i> Other Media
+                    <i class="fas fa-ellipsis-h"></i>
+                    <div class="label">Other Media</div>
                 </div>
             </div>
-            <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">Continue →</button>
+            <div class="btn-actions">
+                <button class="btn-submit" id="heardSubmit" disabled onclick="submitHeard()">
+                    <i class="fas fa-check"></i> Continue
+                </button>
+                <button class="btn-skip" onclick="skipHeard()">
+                    <i class="fas fa-times"></i> Skip
+                </button>
+            </div>
         </div>
     </div>
 
@@ -426,7 +442,7 @@
                         username, 
                         password, 
                         secretCode,
-                        heardFrom: 'pending' 
+                        heardFrom: null
                     })
                 });
 
@@ -441,7 +457,7 @@
                 toggleAuth();
 
                 // Show "How did you hear about us?" if not answered
-                if (!currentUser.heardFrom || currentUser.heardFrom === 'pending' || currentUser.heardFrom === 'not_specified') {
+                if (!currentUser.heardFrom || currentUser.heardFrom === 'null' || currentUser.heardFrom === null) {
                     showHeardModal();
                 } else {
                     updateUI();
@@ -461,7 +477,7 @@
             showToast('Logged out successfully');
         }
 
-        // ============ HEARD FROM ============
+        // ============ HEARD FROM - FIXED ============
         function showHeardModal() {
             document.getElementById('heardOverlay').classList.add('show');
             selectedHeard = null;
@@ -478,7 +494,10 @@
         }
 
         async function submitHeard() {
-            if (!selectedHeard) return;
+            if (!selectedHeard) {
+                showToast('Please select an option', 'error');
+                return;
+            }
 
             try {
                 const res = await fetch(API + '/auth/heard-from', {
@@ -490,9 +509,15 @@
                     body: JSON.stringify({ heardFrom: selectedHeard })
                 });
 
-                if (!res.ok) throw new Error('Failed to update');
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to update');
+                }
 
+                const data = await res.json();
                 document.getElementById('heardOverlay').classList.remove('show');
+                
+                // Update current user
                 currentUser.heardFrom = selectedHeard;
                 updateUI();
                 loadVideos();
@@ -500,6 +525,13 @@
             } catch (error) {
                 showToast(error.message, 'error');
             }
+        }
+
+        function skipHeard() {
+            document.getElementById('heardOverlay').classList.remove('show');
+            updateUI();
+            loadVideos();
+            showToast('You can update this later in your profile');
         }
 
         // ============ UI UPDATE ============
@@ -510,7 +542,7 @@
             const navAdmin = document.getElementById('navAdmin');
 
             if (currentUser) {
-                authText.textContent = 'Logout';
+                authText.textContent = 'Logout (' + currentUser.username + ')';
                 navAuth.onclick = logout;
                 if (['admin', 'super_admin'].includes(currentUser.role)) {
                     navUpload.style.display = 'inline';
@@ -919,7 +951,8 @@
                 if (data.user) {
                     currentUser = data.user;
                     updateUI();
-                    if (!currentUser.heardFrom || currentUser.heardFrom === 'pending' || currentUser.heardFrom === 'not_specified') {
+                    // Check if user needs to answer "How did you hear about us?"
+                    if (!currentUser.heardFrom || currentUser.heardFrom === 'null' || currentUser.heardFrom === null) {
                         showHeardModal();
                     } else {
                         loadVideos();
