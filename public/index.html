@@ -706,7 +706,7 @@
             if (currentVideo) window.open(currentVideo.video_url, '_blank');
         }
 
-        // ===== UPLOAD VIDEO - THE WORKING VERSION =====
+        // ===== UPLOAD VIDEO - EXACTLY AS YOU HAD IT WORKING =====
         async function uploadVideo() {
             const title = document.getElementById('videoTitle').value.trim();
             const description = document.getElementById('videoDesc').value.trim();
@@ -749,37 +749,48 @@
             uploadBtn.textContent = 'Uploading...';
 
             try {
-                const xhr = new XMLHttpRequest();
-                xhr.upload.addEventListener('progress', function(e) {
-                    if (e.lengthComputable) {
-                        const pct = Math.round((e.loaded / e.total) * 100);
-                        progressFill.style.width = pct + '%';
-                        progressText.textContent = pct + '%';
-                    }
-                });
-
-                const result = await new Promise((resolve, reject) => {
+                // Create a promise for the upload
+                const uploadPromise = new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
                     xhr.open('POST', API + '/videos/upload', true);
                     xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('token'));
+
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded / e.total) * 100);
+                            progressFill.style.width = pct + '%';
+                            progressText.textContent = pct + '%';
+                        }
+                    });
+
                     xhr.onload = function() {
-                        try {
-                            const data = JSON.parse(xhr.responseText);
-                            if (xhr.status === 200 || xhr.status === 201) {
+                        if (xhr.status === 200 || xhr.status === 201) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
                                 resolve(data);
-                            } else {
-                                reject(new Error(data.error || 'Upload failed'));
+                            } catch (e) {
+                                reject(new Error('Invalid response'));
                             }
-                        } catch (e) {
-                            reject(new Error('Invalid response'));
+                        } else {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                reject(new Error(data.error || 'Upload failed'));
+                            } catch (e) {
+                                reject(new Error('Upload failed with status ' + xhr.status));
+                            }
                         }
                     };
+
                     xhr.onerror = function() {
-                        reject(new Error('Network error'));
+                        reject(new Error('Network error occurred'));
                     };
+
                     xhr.send(formData);
                 });
 
-                if (result.success) {
+                const data = await uploadPromise;
+
+                if (data.success) {
                     showToast('Video uploaded successfully! 🎉');
                     document.getElementById('videoTitle').value = '';
                     document.getElementById('videoDesc').value = '';
@@ -791,10 +802,10 @@
                     showHome();
                     loadVideos();
                 } else {
-                    throw new Error(result.error || 'Upload failed');
+                    throw new Error(data.error || 'Upload failed');
                 }
             } catch (error) {
-                showToast(error.message, 'error');
+                showToast(error.message || 'Upload failed', 'error');
             } finally {
                 progressDiv.style.display = 'none';
                 progressFill.style.width = '0%';
