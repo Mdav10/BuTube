@@ -63,23 +63,14 @@ const upload = multer({
   }
 });
 
-// Init database with proper schema
+// ===== FIX: DO NOT DROP TABLES - Only create if not exists =====
 async function initDatabase() {
   try {
-    // Drop and recreate tables with video_data as BYTEA
-    await pool.query(`
-      DROP TABLE IF EXISTS user_actions CASCADE;
-      DROP TABLE IF EXISTS comments CASCADE;
-      DROP TABLE IF EXISTS user_logs CASCADE;
-      DROP TABLE IF EXISTS videos CASCADE;
-      DROP TABLE IF EXISTS website_stats CASCADE;
-      DROP TABLE IF EXISTS users CASCADE;
-    `);
-    console.log('✅ Dropped existing tables');
+    console.log('🔄 Initializing database (preserving existing data)...');
 
     // Users table
     await pool.query(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -89,11 +80,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Users table created');
+    console.log('✅ Users table ready');
 
-    // ===== FIX: Videos table with BYTEA for video storage =====
+    // Videos table with BYTEA for video storage
     await pool.query(`
-      CREATE TABLE videos (
+      CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
@@ -113,11 +104,11 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
-    console.log('✅ Videos table created with BYTEA storage');
+    console.log('✅ Videos table ready');
 
     // Comments table
     await pool.query(`
-      CREATE TABLE comments (
+      CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         username VARCHAR(255) NOT NULL,
@@ -125,11 +116,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Comments table created');
+    console.log('✅ Comments table ready');
 
     // User actions table
     await pool.query(`
-      CREATE TABLE user_actions (
+      CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
@@ -138,11 +129,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ User actions table created');
+    console.log('✅ User actions table ready');
 
     // User logs table
     await pool.query(`
-      CREATE TABLE user_logs (
+      CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         ip_address VARCHAR(45),
@@ -152,11 +143,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ User logs table created');
+    console.log('✅ User logs table ready');
 
     // Website stats table
     await pool.query(`
-      CREATE TABLE website_stats (
+      CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
         total_visits INTEGER DEFAULT 0,
         total_users INTEGER DEFAULT 0,
@@ -166,26 +157,50 @@ async function initDatabase() {
         total_comments INTEGER DEFAULT 0
       )
     `);
-    console.log('✅ Website stats table created');
+    console.log('✅ Website stats table ready');
 
-    // Create Super Admin
-    const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
-    const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
-    
-    await pool.query(
-      `INSERT INTO users (username, password, secret_code, role, heard_from) 
-       VALUES ($1, $2, $3, 'super_admin', 'system') 
-       ON CONFLICT (username) DO NOTHING`,
-      ['OWNER_MPC', hashedPassword, hashedSecret]
+    // ===== FIX: Check if Super Admin exists, if not create =====
+    const adminCheck = await pool.query(
+      'SELECT * FROM users WHERE username = $1',
+      ['OWNER_MPC']
     );
 
-    await pool.query(`
-      INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
-      SELECT 0, 0, 0, 0, 0, 0 
-      WHERE NOT EXISTS (SELECT 1 FROM website_stats)
-    `);
+    if (adminCheck.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
+      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+      
+      await pool.query(
+        `INSERT INTO users (username, password, secret_code, role, heard_from) 
+         VALUES ($1, $2, $3, 'super_admin', 'system')`,
+        ['OWNER_MPC', hashedPassword, hashedSecret]
+      );
+      console.log('✅ Super Admin created');
+    } else {
+      console.log('✅ Super Admin already exists');
+    }
 
-    console.log('✅ Database ready');
+    // ===== FIX: Initialize stats only if empty =====
+    const statsCheck = await pool.query('SELECT * FROM website_stats');
+    if (statsCheck.rows.length === 0) {
+      await pool.query(`
+        INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
+        VALUES (0, 0, 0, 0, 0, 0)
+      `);
+      console.log('✅ Stats initialized');
+    } else {
+      console.log('✅ Stats already exist');
+    }
+
+    // ===== FIX: Update stats counts =====
+    const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
+    const videoCount = await pool.query('SELECT COUNT(*) as count FROM videos');
+    await pool.query(
+      'UPDATE website_stats SET total_users = $1, total_videos = $2',
+      [parseInt(userCount.rows[0].count), parseInt(videoCount.rows[0].count)]
+    );
+    console.log('✅ Stats updated');
+
+    console.log('✅ Database ready - DATA PRESERVED!');
     console.log('👑 Super Admin: OWNER_MPC');
     console.log('🔑 Password: 08800+_+Owner!');
     console.log('🔐 Secret: ADMIN_SECRET_2024');
@@ -457,7 +472,7 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
   }
 });
 
-// ============ VIDEO UPLOAD - STORE IN DATABASE ============
+// ============ VIDEO UPLOAD - YOUR EXACT WORKING VERSION ============
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -483,7 +498,6 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     console.log('📁 Video size:', videoFile.size, 'bytes');
     console.log('📁 Video mimetype:', videoFile.mimetype);
     
-    // ===== STORE VIDEO IN DATABASE AS BYTEA =====
     const result = await pool.query(
       `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
                            thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
@@ -584,7 +598,6 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
     );
     
     if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
-      // Return a default thumbnail
       return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
     }
     
@@ -663,7 +676,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
   }
 });
 
-// ============ DELETE VIDEO - FIXED ============
+// ============ DELETE VIDEO ============
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -672,7 +685,6 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
       return res.status(400).json({ error: 'Invalid video ID' });
     }
     
-    // Get video info first
     const videoResult = await pool.query(
       'SELECT * FROM videos WHERE id = $1',
       [videoId]
@@ -684,15 +696,11 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
     
     const video = videoResult.rows[0];
     
-    // Check permission: SuperAdmin can delete ANY video, Admin can only delete their own
     if (req.user.role !== 'super_admin' && video.uploader_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
     
-    // Delete from database (CASCADE will handle user_actions)
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
-    
-    // Update stats
     await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
     
     await logUserActivity(req.user.id, 'delete_video', { 
