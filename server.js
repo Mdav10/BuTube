@@ -13,7 +13,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection
+// ============ DATABASE CONNECTION ============
 const pool = new Pool({
   user: 'neondb_owner',
   password: 'npg_Cb7XtKr0BIoN',
@@ -24,7 +24,6 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-// Test connection
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Database error:', err.message);
@@ -34,7 +33,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// Middleware
+// ============ MIDDLEWARE ============
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '500mb' }));
@@ -43,19 +42,20 @@ app.use(compression());
 app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
-// Create upload directories
+// ============ CREATE DIRECTORIES ============
 ['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config
+// ============ MULTER CONFIG ============
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, unique);
   }
 });
 
@@ -73,11 +73,9 @@ const upload = multer({
   }
 });
 
-// Initialize database
+// ============ INIT DATABASE ============
 async function initDatabase() {
   try {
-    console.log('🔄 Initializing database...');
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -126,7 +124,6 @@ async function initDatabase() {
       )
     `);
 
-    // Create super admin
     const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
     const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
     
@@ -151,7 +148,7 @@ async function initDatabase() {
   }
 }
 
-// Auth middleware
+// ============ AUTH MIDDLEWARE ============
 const auth = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
@@ -240,7 +237,7 @@ app.post('/api/auth/heard-from', auth, async (req, res) => {
   try {
     const { heardFrom } = req.body;
     await pool.query('UPDATE users SET heard_from = $1 WHERE id = $2', [heardFrom, req.user.id]);
-    res.json({ success: true, heardFrom });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update' });
   }
@@ -460,12 +457,12 @@ app.post('/api/videos/:id/comment', async (req, res) => {
 
     const result = await pool.query(
       'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING *',
-      [videoId, username, comment]
+      [videoId, username.trim(), comment.trim()]
     );
     
     res.json({ success: true, comment: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to add comment' });
+    res.status(500).json({ error: 'Failed to add comment: ' + error.message });
   }
 });
 
@@ -517,17 +514,13 @@ app.get('/api/my-stats', auth, async (req, res) => {
   }
 });
 
-// Serve frontend
+// ============ SERVE FRONTEND ============
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server
+// ============ START SERVER ============
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  try {
-    await initDatabase();
-  } catch (error) {
-    console.error('❌ Failed to initialize database:', error.message);
-  }
+  await initDatabase();
 });
