@@ -64,16 +64,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+  limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'video') {
-      const allowedTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/mkv', 'video/webm', 'video/quicktime'];
-      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('video/')) {
+      if (!file.mimetype.startsWith('video/')) {
         return cb(new Error('Only video files are allowed'));
       }
     } else if (file.fieldname === 'thumbnail') {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('image/')) {
+      if (!file.mimetype.startsWith('image/')) {
         return cb(new Error('Only image files are allowed for thumbnails'));
       }
     }
@@ -86,7 +84,6 @@ async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // Check if tables exist, create if not
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -124,6 +121,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id),
+        username VARCHAR(255),
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -407,7 +405,7 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
 
 // ===== SUPER ADMIN ONLY =====
 
-// CREATE ADMIN (Super Admin only)
+// CREATE ADMIN
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -529,7 +527,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
 
 // ===== ADMIN VIDEOS =====
 
-// GET ADMIN VIDEOS (Only their own videos)
+// GET ADMIN VIDEOS
 app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
@@ -579,16 +577,12 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ===== VIDEO UPLOAD - FIXED =====
+// ===== VIDEO UPLOAD =====
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    console.log('📹 Upload request received');
-    console.log('Body:', req.body);
-    console.log('Files:', req.files);
-
     const { title, description } = req.body;
 
     if (!title || !req.files || !req.files.video) {
@@ -598,16 +592,12 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     const videoFile = req.files.video[0];
     const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
 
-    // Check file size (500MB max)
     if (videoFile.size > 500 * 1024 * 1024) {
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
 
     const videoPath = '/uploads/videos/' + videoFile.filename;
     const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
-
-    console.log('📁 Video saved at:', videoPath);
-    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
 
     const result = await pool.query(
       `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
@@ -623,8 +613,6 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       fileSize: videoFile.size 
     }, req);
 
-    console.log('✅ Video uploaded successfully:', result.rows[0].id);
-
     res.json({
       success: true,
       message: 'Video uploaded successfully',
@@ -636,6 +624,8 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
     res.status(500).json({ error: 'Upload failed: ' + error.message });
   }
 });
+
+// ===== PUBLIC VIDEO ROUTES (No authentication required) =====
 
 // GET ALL VIDEOS
 app.get('/api/videos', async (req, res) => {
@@ -681,9 +671,8 @@ app.get('/api/videos/:id', async (req, res) => {
     }
 
     const commentsResult = await pool.query(
-      `SELECT c.id, c.comment, c.created_at, u.username 
+      `SELECT c.id, c.comment, c.created_at, c.username 
        FROM comments c 
-       JOIN users u ON c.user_id = u.id 
        WHERE c.video_id = $1 
        ORDER BY c.created_at DESC`,
       [videoId]
@@ -700,7 +689,114 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// DELETE VIDEO
+// ===== PUBLIC INTERACTIONS (No login required) =====
+
+// LIKE VIDEO - PUBLIC
+app.post('/api/videos/:id/like', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    const { action } = req.body;
+
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    if (!['like', 'dislike'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    const field = action === 'like' ? 'likes' : 'dislikes';
+    await pool.query(`UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`, [videoId]);
+    
+    if (action === 'like') {
+      await pool.query('UPDATE website_stats SET total_likes = total_likes + 1');
+    }
+
+    res.json({
+      success: true,
+      message: `${action} recorded successfully`
+    });
+
+  } catch (error) {
+    console.error('Like error:', error);
+    res.status(500).json({ error: 'Failed to process: ' + error.message });
+  }
+});
+
+// ADD COMMENT - PUBLIC
+app.post('/api/videos/:id/comment', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    const { username, comment } = req.body;
+
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    if (!username || username.trim().length === 0) {
+      return res.status(400).json({ error: 'Please enter your name' });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment is required' });
+    }
+
+    if (username.length > 50) {
+      return res.status(400).json({ error: 'Name is too long (max 50 characters)' });
+    }
+
+    if (comment.length > 1000) {
+      return res.status(400).json({ error: 'Comment is too long (max 1000 characters)' });
+    }
+
+    // Clean username and comment
+    const cleanUsername = username.trim().substring(0, 50);
+    const cleanComment = comment.trim();
+
+    const result = await pool.query(
+      `INSERT INTO comments (video_id, username, comment) 
+       VALUES ($1, $2, $3) 
+       RETURNING id, comment, username, created_at`,
+      [videoId, cleanUsername, cleanComment]
+    );
+
+    await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      comment: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Comment error:', error);
+    res.status(500).json({ error: 'Failed to add comment: ' + error.message });
+  }
+});
+
+// SHARE VIDEO - PUBLIC
+app.post('/api/videos/:id/share', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    await pool.query('UPDATE videos SET share_count = share_count + 1 WHERE id = $1', [videoId]);
+
+    res.json({
+      success: true,
+      message: 'Share recorded successfully'
+    });
+
+  } catch (error) {
+    console.error('Share error:', error);
+    res.status(500).json({ error: 'Failed to record share' });
+  }
+});
+
+// DELETE VIDEO (Admin only)
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -748,117 +844,6 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ error: 'Failed to delete video: ' + error.message });
-  }
-});
-
-// LIKE/DISLIKE
-app.post('/api/videos/:id/like', authenticate, async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    const { action } = req.body;
-
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-
-    if (!['like', 'dislike'].includes(action)) {
-      return res.status(400).json({ error: 'Invalid action' });
-    }
-
-    const existing = await pool.query(
-      `SELECT * FROM user_actions 
-       WHERE user_id = $1 AND video_id = $2 AND action_type = 'like_or_dislike'`,
-      [req.user.id, videoId]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'You already interacted with this video' });
-    }
-
-    const field = action === 'like' ? 'likes' : 'dislikes';
-    await pool.query(`UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`, [videoId]);
-
-    await pool.query(
-      `INSERT INTO user_actions (user_id, video_id, action_type, action_data) 
-       VALUES ($1, $2, 'like_or_dislike', $3)`,
-      [req.user.id, videoId, action]
-    );
-
-    await logUserActivity(req.user.id, 'like_video', { videoId, action }, req);
-
-    res.json({
-      success: true,
-      message: `${action} recorded successfully`
-    });
-
-  } catch (error) {
-    console.error('Like error:', error);
-    res.status(500).json({ error: 'Failed to process: ' + error.message });
-  }
-});
-
-// ADD COMMENT
-app.post('/api/videos/:id/comment', authenticate, async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    const { comment } = req.body;
-
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-
-    if (!comment || comment.trim().length === 0) {
-      return res.status(400).json({ error: 'Comment is required' });
-    }
-
-    if (comment.length > 1000) {
-      return res.status(400).json({ error: 'Comment is too long (max 1000 characters)' });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO comments (video_id, user_id, comment) 
-       VALUES ($1, $2, $3) 
-       RETURNING id, comment, created_at`,
-      [videoId, req.user.id, comment.trim()]
-    );
-
-    await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
-    await logUserActivity(req.user.id, 'comment_video', { videoId, comment: comment.trim() }, req);
-
-    res.json({
-      success: true,
-      message: 'Comment added successfully',
-      comment: {
-        ...result.rows[0],
-        username: req.user.username
-      }
-    });
-
-  } catch (error) {
-    console.error('Comment error:', error);
-    res.status(500).json({ error: 'Failed to add comment: ' + error.message });
-  }
-});
-
-// SHARE VIDEO
-app.post('/api/videos/:id/share', async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-
-    await pool.query('UPDATE videos SET share_count = share_count + 1 WHERE id = $1', [videoId]);
-
-    res.json({
-      success: true,
-      message: 'Share recorded successfully'
-    });
-
-  } catch (error) {
-    console.error('Share error:', error);
-    res.status(500).json({ error: 'Failed to record share' });
   }
 });
 
