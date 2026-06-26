@@ -335,7 +335,7 @@
                     <div class="bar"><div class="fill" id="progressFill"></div></div>
                 </div>
                 
-                <button class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
+                <button type="button" class="btn-upload" id="uploadBtn" onclick="uploadVideo()">Upload Video</button>
             </div>
         </div>
 
@@ -706,12 +706,17 @@
             if (currentVideo) window.open(currentVideo.video_url, '_blank');
         }
 
-        // ===== UPLOAD VIDEO - EXACTLY AS YOU HAD IT WORKING =====
+        // ===== UPLOAD VIDEO - THE WORKING VERSION WITH type="button" =====
         async function uploadVideo() {
+            console.log('Upload function called!');
+            
             const title = document.getElementById('videoTitle').value.trim();
             const description = document.getElementById('videoDesc').value.trim();
             const videoFile = document.getElementById('videoFile').files[0];
             const thumbFile = document.getElementById('thumbFile').files[0];
+
+            console.log('Title:', title);
+            console.log('Video file:', videoFile ? videoFile.name : 'None');
 
             if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
                 showToast('Only admins can upload', 'error');
@@ -789,6 +794,7 @@
                 });
 
                 const data = await uploadPromise;
+                console.log('Upload response:', data);
 
                 if (data.success) {
                     showToast('Video uploaded successfully! 🎉');
@@ -805,6 +811,7 @@
                     throw new Error(data.error || 'Upload failed');
                 }
             } catch (error) {
+                console.error('Upload error:', error);
                 showToast(error.message || 'Upload failed', 'error');
             } finally {
                 progressDiv.style.display = 'none';
