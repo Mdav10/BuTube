@@ -45,7 +45,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Multer config for video uploads
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let dir = 'uploads/';
@@ -79,11 +79,12 @@ const upload = multer({
   }
 });
 
-// Initialize database
+// Initialize database with proper schema
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
+    // Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -97,6 +98,7 @@ async function initDatabase() {
       );
     `);
 
+    // Videos table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -116,6 +118,7 @@ async function initDatabase() {
       );
     `);
 
+    // Comments table with proper columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
@@ -127,6 +130,7 @@ async function initDatabase() {
       );
     `);
 
+    // User actions table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
@@ -138,6 +142,7 @@ async function initDatabase() {
       );
     `);
 
+    // User logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
@@ -150,6 +155,7 @@ async function initDatabase() {
       );
     `);
 
+    // Website stats table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
@@ -246,9 +252,8 @@ async function logUserActivity(userId, action, details, req) {
   }
 }
 
-// ============ API ROUTES ============
+// ============ AUTH ROUTES ============
 
-// REGISTER
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode, heardFrom } = req.body;
@@ -308,7 +313,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// LOGIN
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -361,7 +365,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// GET CURRENT USER
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     res.json({
@@ -373,7 +376,6 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
-// UPDATE HEARD FROM
 app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   try {
     const { heardFrom } = req.body;
@@ -403,9 +405,8 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   }
 });
 
-// ===== SUPER ADMIN ONLY =====
+// ============ SUPER ADMIN ROUTES ============
 
-// CREATE ADMIN
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -459,7 +460,6 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// GET SUPER ADMIN STATS
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
@@ -525,9 +525,8 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-// ===== ADMIN VIDEOS =====
+// ============ ADMIN VIDEOS MANAGEMENT ============
 
-// GET ADMIN VIDEOS
 app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
@@ -550,7 +549,6 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
   }
 });
 
-// GET ADMIN STATS
 app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videos = await pool.query(
@@ -577,7 +575,8 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ===== VIDEO UPLOAD =====
+// ============ VIDEO UPLOAD ============
+
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -625,9 +624,56 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ===== PUBLIC VIDEO ROUTES (No authentication required) =====
+// ============ VIDEO EDIT ============
 
-// GET ALL VIDEOS
+app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    const { title, description } = req.body;
+
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    // Check ownership
+    const videoCheck = await pool.query(
+      'SELECT uploader_id FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+
+    if (videoCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    if (videoCheck.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'You can only edit your own videos' });
+    }
+
+    const result = await pool.query(
+      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING id, title, description, video_url, thumbnail_url',
+      [title, description || '', videoId]
+    );
+
+    await logUserActivity(req.user.id, 'edit_video', { videoId, title }, req);
+
+    res.json({
+      success: true,
+      message: 'Video updated successfully',
+      video: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Edit error:', error);
+    res.status(500).json({ error: 'Failed to update video: ' + error.message });
+  }
+});
+
+// ============ PUBLIC VIDEO ROUTES ============
+
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(
@@ -647,7 +693,6 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// GET VIDEO BY ID
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -656,6 +701,7 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(400).json({ error: 'Invalid video ID' });
     }
 
+    // Increment views
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
 
     const videoResult = await pool.query(
@@ -670,6 +716,7 @@ app.get('/api/videos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
+    // Get comments with username column
     const commentsResult = await pool.query(
       `SELECT c.id, c.comment, c.created_at, c.username 
        FROM comments c 
@@ -689,9 +736,8 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// ===== PUBLIC INTERACTIONS (No login required) =====
+// ===== PUBLIC INTERACTIONS =====
 
-// LIKE VIDEO - PUBLIC
 app.post('/api/videos/:id/like', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -723,7 +769,6 @@ app.post('/api/videos/:id/like', async (req, res) => {
   }
 });
 
-// ADD COMMENT - PUBLIC
 app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -749,7 +794,6 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       return res.status(400).json({ error: 'Comment is too long (max 1000 characters)' });
     }
 
-    // Clean username and comment
     const cleanUsername = username.trim().substring(0, 50);
     const cleanComment = comment.trim();
 
@@ -774,7 +818,6 @@ app.post('/api/videos/:id/comment', async (req, res) => {
   }
 });
 
-// SHARE VIDEO - PUBLIC
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -796,7 +839,8 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
-// DELETE VIDEO (Admin only)
+// ============ DELETE VIDEO ============
+
 app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -816,10 +860,12 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
 
     const video = videoResult.rows[0];
 
+    // Check ownership (owner or super_admin can delete)
     if (video.uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
 
+    // Delete files
     try {
       if (video.video_url) {
         const videoPath = path.join(__dirname, video.video_url);
