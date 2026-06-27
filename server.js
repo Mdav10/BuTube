@@ -8,7 +8,6 @@ const cors = require('cors');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
-const csrf = require('csurf');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
@@ -17,78 +16,36 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============ SECURITY: Strong JWT Secret ============
-const JWT_SECRET = process.env.JWT_SECRET || 'akabakuze_super_secure_secret_key_2024_7x9k2m5p8q3w';
-
-// ============ SECURITY: Rate Limiting ============
+// ============ SECURITY: Rate Limiting (Safe addition) ============
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 10 login attempts per hour
+  windowMs: 60 * 60 * 1000,
+  max: 10,
   message: { error: 'Too many login attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
-const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // Limit each IP to 20 uploads per hour
-  message: { error: 'Too many upload attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// ============ SECURITY: Helmet (Security Headers) ============
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      mediaSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'", "https:", "data:"],
-    },
-  },
-  crossOriginEmbedderPolicy: true,
-  crossOriginOpenerPolicy: true,
-  crossOriginResourcePolicy: { policy: "same-site" },
-  dnsPrefetchControl: true,
-  frameguard: { action: "deny" },
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-  ieNoOpen: true,
-  noSniff: true,
-  referrerPolicy: { policy: "same-origin" },
-  xssFilter: true,
+// ============ MIDDLEWARE (Your original working middleware + security) ============
+app.use(helmet({ 
+  contentSecurityPolicy: false, 
+  crossOriginEmbedderPolicy: false 
 }));
-
-// ============ SECURITY: CORS ============
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
-
-// ============ SECURITY: Cookie Parser ============
-app.use(cookieParser());
-
-// ============ SECURITY: CSRF Protection ============
-const csrfProtection = csrf({ cookie: true });
-
-// ============ SECURITY: Input Sanitization ============
+app.use(cors());
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+app.use(compression());
+app.use(cookieParser());
 
-// ============ SECURITY: XSS Protection ============
+// ============ SECURITY: Apply rate limiting only to auth routes ============
+app.use('/api/', limiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// ============ SECURITY: XSS Protection (Safe addition) ============
 app.use((req, res, next) => {
   if (req.body) {
     for (let key in req.body) {
@@ -100,26 +57,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// ============ SECURITY: Compression ============
-app.use(compression());
+// ============ STATIC FILES ============
+app.use('/uploads', express.static('uploads'));
+app.use(express.static('public'));
 
-// ============ SECURITY: Apply Rate Limiting ============
-app.use('/api/', limiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/videos/upload', uploadLimiter);
+// ============ CREATE DIRECTORIES ============
+['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
-// ============ SECURITY: Static Files ============
-app.use(express.static('public', {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true,
-}));
+// ============ MULTER CONFIG (YOUR EXACT WORKING VERSION) ============
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, unique);
+  }
+});
 
-// ============ SECURITY: SQL Injection Prevention ============
-// (Using parameterized queries throughout - already done)
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'video' && !file.mimetype.startsWith('video/')) {
+      return cb(new Error('Only video files allowed'));
+    }
+    if (file.fieldname === 'thumbnail' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files allowed'));
+    }
+    cb(null, true);
+  }
+});
 
-// ============ DATABASE CONNECTION ============
+// ============ DATABASE CONNECTION (YOUR EXACT VERSION) ============
 const pool = new Pool({
   user: 'neondb_owner',
   password: 'npg_Cb7XtKr0BIoN',
@@ -128,8 +101,6 @@ const pool = new Pool({
   database: 'neondb',
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 30000,
-  max: 20,
-  idleTimeoutMillis: 30000,
 });
 
 pool.connect((err, client, release) => {
@@ -141,53 +112,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ MULTER CONFIG ============
-const storage = multer.memoryStorage();
-
-const upload = multer({
-  storage: storage,
-  limits: { 
-    fileSize: 500 * 1024 * 1024,
-    files: 2,
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.fieldname === 'video') {
-      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
-      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('video/')) {
-        return cb(new Error('Only video files are allowed'));
-      }
-    } else if (file.fieldname === 'thumbnail') {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.mimetype) && !file.mimetype.startsWith('image/')) {
-        return cb(new Error('Only image files are allowed for thumbnails'));
-      }
-    }
-    cb(null, true);
-  }
-});
-
-// ============ SECURITY: Input Validation Helpers ============
-const isValidUsername = (username) => {
-  return username && username.length >= 3 && username.length <= 50 && /^[a-zA-Z0-9_]+$/.test(username);
-};
-
-const isValidPassword = (password) => {
-  return password && password.length >= 6;
-};
-
-const isValidSecretCode = (code) => {
-  return code && code.length >= 4 && code.length <= 100;
-};
-
-const isValidTitle = (title) => {
-  return title && title.length >= 1 && title.length <= 500;
-};
-
-const isValidComment = (comment) => {
-  return comment && comment.length >= 1 && comment.length <= 1000;
-};
-
-// ============ INIT DATABASE ============
+// ============ INIT DATABASE (YOUR EXACT VERSION) ============
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
@@ -200,10 +125,7 @@ async function initDatabase() {
         secret_code VARCHAR(255) NOT NULL,
         heard_from VARCHAR(100),
         role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP,
-        login_attempts INTEGER DEFAULT 0,
-        locked_until TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -212,11 +134,8 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
-        video_data BYTEA NOT NULL,
-        video_mimetype VARCHAR(100),
-        video_filename VARCHAR(255),
-        thumbnail_data BYTEA,
-        thumbnail_mimetype VARCHAR(100),
+        video_url VARCHAR(500) NOT NULL,
+        thumbnail_url VARCHAR(500),
         uploader_id INTEGER REFERENCES users(id),
         uploader_name VARCHAR(255),
         views INTEGER DEFAULT 0,
@@ -270,40 +189,25 @@ async function initDatabase() {
         total_videos INTEGER DEFAULT 0,
         total_views INTEGER DEFAULT 0,
         total_likes INTEGER DEFAULT 0,
-        total_comments INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        total_comments INTEGER DEFAULT 0
       )
     `);
 
-    // Create Super Admin if not exists
-    const adminCheck = await pool.query('SELECT * FROM users WHERE username = $1', ['OWNER_MPC']);
-    if (adminCheck.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
-      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
-      await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, heard_from) 
-         VALUES ($1, $2, $3, 'super_admin', 'system')`,
-        ['OWNER_MPC', hashedPassword, hashedSecret]
-      );
-      console.log('✅ Super Admin created');
-    }
-
-    // Initialize stats if empty
-    const statsCheck = await pool.query('SELECT * FROM website_stats');
-    if (statsCheck.rows.length === 0) {
-      await pool.query(`
-        INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
-        VALUES (0, 0, 0, 0, 0, 0)
-      `);
-    }
-
-    // Update stats
-    const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
-    const videoCount = await pool.query('SELECT COUNT(*) as count FROM videos');
+    const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
+    const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+    
     await pool.query(
-      'UPDATE website_stats SET total_users = $1, total_videos = $2',
-      [parseInt(userCount.rows[0].count), parseInt(videoCount.rows[0].count)]
+      `INSERT INTO users (username, password, secret_code, role, heard_from) 
+       VALUES ($1, $2, $3, 'super_admin', 'system') 
+       ON CONFLICT (username) DO NOTHING`,
+      ['OWNER_MPC', hashedPassword, hashedSecret]
     );
+
+    await pool.query(`
+      INSERT INTO website_stats (total_visits, total_users, total_videos, total_views, total_likes, total_comments) 
+      SELECT 0, 0, 0, 0, 0, 0 
+      WHERE NOT EXISTS (SELECT 1 FROM website_stats)
+    `);
 
     console.log('✅ Database ready');
     console.log('👑 Super Admin: OWNER_MPC');
@@ -314,36 +218,18 @@ async function initDatabase() {
   }
 }
 
-// ============ SECURITY: Stronger Auth Middleware ============
+// ============ AUTH MIDDLEWARE (YOUR EXACT VERSION) ============
 const authenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token' });
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    const user = await pool.query(
-      'SELECT id, username, role FROM users WHERE id = $1 AND is_active = true',
-      [decoded.userId]
-    );
-    
-    if (!user.rows.length) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+    const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
+    if (!user.rows.length) return res.status(401).json({ error: 'Invalid token' });
     req.user = user.rows[0];
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    return res.status(403).json({ error: 'Authentication failed' });
+    res.status(403).json({ error: 'Invalid token' });
   }
 };
 
@@ -357,7 +243,6 @@ const authorize = (...roles) => {
   };
 };
 
-// ============ SECURITY: Logging with sanitization ============
 async function logUserActivity(userId, action, details, req) {
   try {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -372,41 +257,16 @@ async function logUserActivity(userId, action, details, req) {
   }
 }
 
-// ============ SECURITY: Block IP after too many failed attempts ============
-async function handleFailedLogin(username, req) {
-  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-  const attempts = await pool.query(
-    'SELECT COUNT(*) as count FROM user_logs WHERE ip_address = $1 AND action = $2 AND created_at > NOW() - INTERVAL \'1 hour\'',
-    [ip, 'login_failed']
-  );
-  
-  if (parseInt(attempts.rows[0].count) > 5) {
-    await pool.query(
-      'UPDATE users SET locked_until = NOW() + INTERVAL \'1 hour\' WHERE username = $1',
-      [username]
-    );
-  }
-}
-
-// ============ AUTH ROUTES ============
+// ============ AUTH ROUTES (YOUR EXACT VERSION) ============
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode, heardFrom } = req.body;
-    
-    if (!isValidUsername(username)) {
-      return res.status(400).json({ error: 'Username must be 3-50 characters and contain only letters, numbers, and underscores' });
-    }
-    
-    if (!isValidPassword(password)) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-    
-    if (!isValidSecretCode(secretCode)) {
-      return res.status(400).json({ error: 'Secret code must be at least 4 characters' });
+    if (!username || !password || !secretCode) {
+      return res.status(400).json({ error: 'All fields required' });
     }
     
     const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (existing.rows.length) return res.status(400).json({ error: 'Username already exists' });
+    if (existing.rows.length) return res.status(400).json({ error: 'Username exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedSecret = await bcrypt.hash(secretCode, 10);
@@ -422,7 +282,7 @@ app.post('/api/auth/register', async (req, res) => {
     
     const token = jwt.sign(
       { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'secret123',
       { expiresIn: '7d' }
     );
     
@@ -435,50 +295,31 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
-    
     if (!username || !password || !secretCode) {
       return res.status(400).json({ error: 'All fields required' });
     }
     
-    const result = await pool.query(
-      'SELECT * FROM users WHERE username = $1 AND (locked_until IS NULL OR locked_until < NOW())',
-      [username]
-    );
-    
-    if (!result.rows.length) {
-      await logUserActivity(null, 'login_failed', { username, reason: 'user_not_found' }, req);
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (!result.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
 
     const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password);
     const validSecret = await bcrypt.compare(secretCode, user.secret_code);
     
     if (!validPassword || !validSecret) {
-      await logUserActivity(user.id, 'login_failed', { reason: 'invalid_credentials' }, req);
-      await handleFailedLogin(username, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    await pool.query('UPDATE users SET last_login = NOW(), login_attempts = 0 WHERE id = $1', [user.id]);
     await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
     await logUserActivity(user.id, 'login', { success: true }, req);
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'secret123',
       { expiresIn: '7d' }
     );
     
-    res.json({ 
-      token, 
-      user: { 
-        id: user.id, 
-        username: user.username, 
-        role: user.role,
-        lastLogin: user.last_login 
-      } 
-    });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
@@ -491,10 +332,6 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   try {
     const { heardFrom } = req.body;
-    const validSources = ['friend', 'self', 'facebook', 'instagram', 'twitter', 'other'];
-    if (!validSources.includes(heardFrom)) {
-      return res.status(400).json({ error: 'Invalid source' });
-    }
     await pool.query('UPDATE users SET heard_from = $1 WHERE id = $2', [heardFrom, req.user.id]);
     res.json({ success: true });
   } catch (error) {
@@ -502,24 +339,12 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', authenticate, async (req, res) => {
-  await logUserActivity(req.user.id, 'logout', {}, req);
-  res.json({ success: true });
-});
-
-// ============ ADMIN ROUTES ============
+// ============ ADMIN ROUTES (YOUR EXACT VERSION) ============
 app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
-    
-    if (!isValidUsername(username)) {
-      return res.status(400).json({ error: 'Username must be 3-50 characters' });
-    }
-    if (!isValidPassword(password)) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-    if (!isValidSecretCode(secretCode)) {
-      return res.status(400).json({ error: 'Secret code must be at least 4 characters' });
+    if (!username || !password || !secretCode) {
+      return res.status(400).json({ error: 'All fields required' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -548,7 +373,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
     
     const allAdmins = await pool.query(`
-      SELECT id, username, role, created_at, last_login
+      SELECT id, username, role, created_at 
       FROM users 
       WHERE role IN ('admin', 'super_admin')
       ORDER BY created_at DESC
@@ -573,7 +398,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     `);
 
     const recentUsers = await pool.query(`
-      SELECT id, username, role, heard_from, created_at, last_login
+      SELECT id, username, role, heard_from, created_at 
       FROM users 
       ORDER BY created_at DESC 
       LIMIT 20
@@ -643,9 +468,7 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
 app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at, 
-              CASE WHEN video_data IS NOT NULL THEN true ELSE false END as has_video
-       FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
+      `SELECT * FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
       [req.user.id]
     );
     res.json({ success: true, videos: result.rows });
@@ -655,20 +478,20 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
   }
 });
 
-// ============ VIDEO UPLOAD ============
+// ============ VIDEO UPLOAD - YOUR EXACT WORKING VERSION (UNTOUCHED) ============
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log('📹 Upload request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+    
     const { title, description } = req.body;
     
-    if (!isValidTitle(title)) {
-      return res.status(400).json({ error: 'Title must be between 1 and 500 characters' });
-    }
-    
-    if (!req.files || !req.files.video) {
-      return res.status(400).json({ error: 'Video file is required' });
+    if (!title || !req.files || !req.files.video) {
+      return res.status(400).json({ error: 'Title and video file are required' });
     }
     
     const videoFile = req.files.video[0];
@@ -678,32 +501,17 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
     
-    // SECURITY: Scan for malicious content (basic)
-    const dangerousPatterns = [/<script/i, /javascript:/i, /data:/i, /vbscript:/i];
-    const titleCheck = title;
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(titleCheck)) {
-        return res.status(400).json({ error: 'Invalid title content' });
-      }
-    }
+    const videoPath = '/uploads/videos/' + videoFile.filename;
+    const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
+    
+    console.log('📁 Video saved at:', videoPath);
+    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
     
     const result = await pool.query(
-      `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
-                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-       RETURNING id, title, description, video_mimetype, video_filename, file_size, created_at`,
-      [
-        title, 
-        description || '', 
-        videoFile.buffer,
-        videoFile.mimetype,
-        videoFile.originalname,
-        thumbnailFile ? thumbnailFile.buffer : null,
-        thumbnailFile ? thumbnailFile.mimetype : null,
-        req.user.id, 
-        req.user.username, 
-        videoFile.size
-      ]
+      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING id, title, description, video_url, thumbnail_url, file_size, created_at`,
+      [title, description || '', videoPath, thumbnailPath, req.user.id, req.user.username, videoFile.size]
     );
     
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
@@ -712,6 +520,8 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       title: title,
       fileSize: videoFile.size 
     }, req);
+    
+    console.log('✅ Video uploaded successfully:', result.rows[0].id);
     
     res.json({
       success: true,
@@ -724,14 +534,13 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-// ============ VIDEO ROUTES ============
+// ============ VIDEO ROUTES (YOUR EXACT VERSION) ============
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name,
-             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
-             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
+      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url, 
+             v.views, v.likes, v.dislikes, v.share_count, v.created_at,
+             u.username as uploader_name
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.is_active = true 
@@ -741,59 +550,6 @@ app.get('/api/videos', async (req, res) => {
   } catch (error) {
     console.error('Get videos error:', error);
     res.status(500).json({ error: 'Failed to get videos: ' + error.message });
-  }
-});
-
-app.get('/api/videos/:id/stream', async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-    
-    const result = await pool.query(
-      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
-      [videoId]
-    );
-    
-    if (result.rows.length === 0 || !result.rows[0].video_data) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    
-    const video = result.rows[0];
-    res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
-    res.setHeader('Content-Length', video.video_data.length);
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.send(video.video_data);
-  } catch (error) {
-    console.error('Stream error:', error);
-    res.status(500).json({ error: 'Failed to stream video: ' + error.message });
-  }
-});
-
-app.get('/api/videos/:id/thumbnail', async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-    
-    const result = await pool.query(
-      'SELECT thumbnail_data, thumbnail_mimetype FROM videos WHERE id = $1 AND is_active = true',
-      [videoId]
-    );
-    
-    if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
-      return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
-    }
-    
-    const thumbnail = result.rows[0];
-    res.setHeader('Content-Type', thumbnail.thumbnail_mimetype || 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.send(thumbnail.thumbnail_data);
-  } catch (error) {
-    console.error('Thumbnail error:', error);
-    res.status(500).json({ error: 'Failed to get thumbnail: ' + error.message });
   }
 });
 
@@ -807,10 +563,7 @@ app.get('/api/videos/:id', async (req, res) => {
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
     const videoResult = await pool.query(`
-      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name,
-             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
-             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
+      SELECT v.*, u.username as uploader_name 
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.id = $1 AND v.is_active = true
@@ -840,9 +593,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
     
-    if (!isValidTitle(title)) {
-      return res.status(400).json({ error: 'Title must be between 1 and 500 characters' });
-    }
+    if (!title) return res.status(400).json({ error: 'Title required' });
 
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
@@ -852,7 +603,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
     }
 
     const result = await pool.query(
-      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING id, title, description, created_at',
+      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING *',
       [title, description || '', videoId]
     );
     
@@ -868,52 +619,37 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
   try {
     const videoId = parseInt(req.params.id);
     
-    if (isNaN(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
+    const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
+    if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
-    const videoResult = await pool.query(
-      'SELECT * FROM videos WHERE id = $1',
-      [videoId]
-    );
-    
-    if (videoResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    
-    const video = videoResult.rows[0];
-    
-    if (req.user.role !== 'super_admin' && video.uploader_id !== req.user.id) {
+    if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
-    
+
+    const video = check.rows[0];
+    if (video.video_url) {
+      const filePath = path.join(__dirname, video.video_url);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    if (video.thumbnail_url) {
+      const filePath = path.join(__dirname, video.thumbnail_url);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
-    await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
+    await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
     
-    await logUserActivity(req.user.id, 'delete_video', { 
-      videoId, 
-      title: video.title,
-      uploader: video.uploader_name 
-    }, req);
-    
-    res.json({ 
-      success: true, 
-      message: 'Video deleted successfully' 
-    });
+    res.json({ success: true });
   } catch (error) {
-    console.error('❌ Delete error:', error);
-    res.status(500).json({ error: 'Failed to delete video: ' + error.message });
+    res.status(500).json({ error: 'Failed to delete video' });
   }
 });
 
-// ============ PUBLIC INTERACTIONS ============
+// ============ PUBLIC INTERACTIONS (YOUR EXACT VERSION) ============
 app.post('/api/videos/:id/like', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { action } = req.body;
-    if (!['like', 'dislike'].includes(action)) {
-      return res.status(400).json({ error: 'Invalid action' });
-    }
     const field = action === 'like' ? 'likes' : 'dislikes';
     await pool.query(`UPDATE videos SET ${field} = ${field} + 1 WHERE id = $1`, [videoId]);
     if (action === 'like') {
@@ -930,12 +666,8 @@ app.post('/api/videos/:id/comment', async (req, res) => {
     const videoId = parseInt(req.params.id);
     const { username, comment } = req.body;
     
-    if (!username || username.length < 1 || username.length > 50) {
-      return res.status(400).json({ error: 'Name must be between 1 and 50 characters' });
-    }
-    
-    if (!comment || !isValidComment(comment)) {
-      return res.status(400).json({ error: 'Comment must be between 1 and 1000 characters' });
+    if (!username || !comment) {
+      return res.status(400).json({ error: 'Name and comment required' });
     }
 
     const result = await pool.query(
@@ -962,11 +694,6 @@ app.post('/api/videos/:id/share', async (req, res) => {
   }
 });
 
-// ============ CSRF Token Endpoint ============
-app.get('/api/csrf-token', csrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
-
 // ============ SERVE FRONTEND ============
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -975,10 +702,7 @@ app.get('*', (req, res) => {
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ error: 'Invalid CSRF token' });
-  }
-  res.status(500).json({ error: 'Something went wrong' });
+  res.status(500).json({ error: 'Something went wrong: ' + err.message });
 });
 
 // ============ START SERVER ============
