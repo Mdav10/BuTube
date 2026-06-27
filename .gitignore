@@ -1,8 +1,8 @@
-cat > .gitignore << 'EOF'
 node_modules/
-uploads/
 .env
-.DS_Store
+uploads/
 *.log
+.DS_Store
 *.tmp
-EOF
+.idea/
+.vscode/

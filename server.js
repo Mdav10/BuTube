@@ -16,11 +16,22 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============ SECURITY: Validate required environment variables ============
+const requiredEnv = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME', 'JWT_SECRET'];
+for (const env of requiredEnv) {
+  if (!process.env[env]) {
+    console.error(`❌ Missing required environment variable: ${env}`);
+    process.exit(1);
+  }
+}
+
 // ============ SECURITY: Rate Limiting ============
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 const authLimiter = rateLimit({
@@ -29,12 +40,22 @@ const authLimiter = rateLimit({
   message: { error: 'Too many login attempts, please try again later.' },
 });
 
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many upload attempts, please try again later.' },
+});
+
 // ============ MIDDLEWARE ============
 app.use(helmet({ 
   contentSecurityPolicy: false, 
   crossOriginEmbedderPolicy: false 
 }));
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
@@ -44,6 +65,7 @@ app.use(cookieParser());
 app.use('/api/', limiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/videos/upload', uploadLimiter);
 
 // ============ SECURITY: XSS Protection ============
 app.use((req, res, next) => {
@@ -61,12 +83,11 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 
 // ============ CREATE DIRECTORIES ============
-// Only for thumbnails (videos stored in database)
 ['thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER CONFIG - Memory Storage (for database) ============
+// ============ MULTER CONFIG - Memory Storage ============
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -83,15 +104,17 @@ const upload = multer({
   }
 });
 
-// ============ DATABASE CONNECTION ============
+// ============ DATABASE CONNECTION - FROM .env ============
 const pool = new Pool({
-  user: 'neondb_owner',
-  password: 'npg_Cb7XtKr0BIoN',
-  host: 'ep-holy-scene-apw8vqig.c-7.us-east-1.aws.neon.tech',
-  port: 5432,
-  database: 'neondb',
-  ssl: { rejectUnauthorized: false },
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 30000,
+  max: 20,
+  idleTimeoutMillis: 30000,
 });
 
 pool.connect((err, client, release) => {
@@ -103,7 +126,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ INIT DATABASE - WITH BYTEA STORAGE ============
+// ============ INIT DATABASE ============
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
@@ -117,11 +140,14 @@ async function initDatabase() {
         secret_code VARCHAR(255) NOT NULL,
         heard_from VARCHAR(100),
         role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP,
+        login_attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP
       )
     `);
 
-    // ===== VIDEOS TABLE WITH BYTEA STORAGE =====
+    // Videos table with BYTEA storage
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -193,17 +219,21 @@ async function initDatabase() {
       )
     `);
 
-    // Check if Super Admin exists
-    const adminCheck = await pool.query('SELECT * FROM users WHERE username = $1', ['OWNER_MPC']);
+    // ===== FIX: Super Admin from .env =====
+    const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
+    const adminPassword = process.env.ADMIN_PASSWORD || '08800+_+Owner!';
+    const adminSecret = process.env.ADMIN_SECRET || 'ADMIN_SECRET_2024';
+
+    const adminCheck = await pool.query('SELECT * FROM users WHERE username = $1', [adminUsername]);
     if (adminCheck.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('08800+_+Owner!', 10);
-      const hashedSecret = await bcrypt.hash('ADMIN_SECRET_2024', 10);
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const hashedSecret = await bcrypt.hash(adminSecret, 10);
       await pool.query(
         `INSERT INTO users (username, password, secret_code, role, heard_from) 
          VALUES ($1, $2, $3, 'super_admin', 'system')`,
-        ['OWNER_MPC', hashedPassword, hashedSecret]
+        [adminUsername, hashedPassword, hashedSecret]
       );
-      console.log('✅ Super Admin created');
+      console.log('✅ Super Admin created from .env');
     } else {
       console.log('✅ Super Admin already exists');
     }
@@ -226,9 +256,9 @@ async function initDatabase() {
     );
 
     console.log('✅ Database ready - VIDEOS STORED IN DATABASE (BYTEA)');
-    console.log('👑 Super Admin: OWNER_MPC');
-    console.log('🔑 Password: 08800+_+Owner!');
-    console.log('🔐 Secret: ADMIN_SECRET_2024');
+    console.log('👑 Super Admin:', adminUsername);
+    console.log('🔑 Password:', adminPassword);
+    console.log('🔐 Secret:', adminSecret);
   } catch (error) {
     console.error('❌ Database error:', error.message);
   }
@@ -239,12 +269,15 @@ const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
     if (!user.rows.length) return res.status(401).json({ error: 'Invalid token' });
     req.user = user.rows[0];
     next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
     res.status(403).json({ error: 'Invalid token' });
   }
 };
@@ -298,7 +331,7 @@ app.post('/api/auth/register', async (req, res) => {
     
     const token = jwt.sign(
       { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
-      process.env.JWT_SECRET || 'secret123',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     
@@ -331,7 +364,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET || 'secret123',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     
@@ -496,15 +529,15 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
   }
 });
 
-// ============ VIDEO UPLOAD - STORE IN DATABASE (BYTEA) ============
+// ============ VIDEO UPLOAD ============
 app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    console.log('📹 Upload request received');
-    console.log('Body:', req.body);
-    console.log('Files:', req.files);
+    // REMOVED: console.log('📹 Upload request received');
+    // REMOVED: console.log('Body:', req.body);
+    // REMOVED: console.log('Files:', req.files);
     
     const { title, description } = req.body;
     
@@ -519,10 +552,6 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
     
-    console.log('📁 Video size:', videoFile.size, 'bytes');
-    console.log('📁 Video mimetype:', videoFile.mimetype);
-    
-    // ===== STORE VIDEO IN DATABASE AS BYTEA =====
     const result = await pool.query(
       `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
                            thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
@@ -548,8 +577,6 @@ app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), 
       title: title,
       fileSize: videoFile.size 
     }, req);
-    
-    console.log('✅ Video uploaded successfully to database:', result.rows[0].id);
     
     res.json({
       success: true,
@@ -582,7 +609,6 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// ===== STREAM VIDEO FROM DATABASE =====
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -609,7 +635,6 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   }
 });
 
-// ===== GET THUMBNAIL FROM DATABASE =====
 app.get('/api/videos/:id/thumbnail', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -731,8 +756,6 @@ app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), a
       title: video.title,
       uploader: video.uploader_name 
     }, req);
-    
-    console.log('✅ Video deleted successfully from database:', videoId);
     
     res.json({ 
       success: true, 
