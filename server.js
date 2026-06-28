@@ -109,7 +109,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER CONFIG ============
+// ============ MULTER CONFIG - Disk Storage ============
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
@@ -163,7 +163,6 @@ pool.connect((err, client, release) => {
 // ============ DATABASE INITIALIZATION ============
 async function addMissingColumns() {
   try {
-    // Check if subscription_status column exists
     const columnCheck = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -225,7 +224,7 @@ async function initDatabase() {
     `);
     console.log('✅ Users table ready');
 
-    // Videos table with correct columns
+    // ===== FIX: Videos table with correct columns =====
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -1001,8 +1000,10 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       ORDER BY created_at DESC
     `);
 
+    // ===== FIX: Use video_url instead of video_data =====
     const allVideos = await pool.query(`
-      SELECT v.id, v.title, v.views, v.likes, v.share_count, v.created_at, u.username as uploader_name
+      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url,
+             v.views, v.likes, v.share_count, v.created_at, u.username as uploader_name
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.is_active = true 
