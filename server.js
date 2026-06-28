@@ -152,36 +152,33 @@ pool.connect((err, client, release) => {
 });
 
 // ============ DATABASE INITIALIZATION ============
-async function addMissingColumns() {
+async function ensureColumns() {
   try {
-    const columnCheck = await pool.query(`
+    // Check if is_approved column exists
+    const checkResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'users' AND column_name = 'subscription_status'
+      WHERE table_name = 'users' AND column_name = 'is_approved'
     `);
 
-    if (columnCheck.rows.length === 0) {
-      console.log('📝 Adding subscription columns...');
+    if (checkResult.rows.length === 0) {
+      console.log('📝 Adding missing columns to users table...');
       await pool.query(`
         ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'pending',
-        ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS subscription_start DATE,
-        ADD COLUMN IF NOT EXISTS subscription_end DATE,
-        ADD COLUMN IF NOT EXISTS subscription_proof_image BYTEA,
-        ADD COLUMN IF NOT EXISTS subscription_proof_mimetype VARCHAR(100),
-        ADD COLUMN IF NOT EXISTS subscription_proof_uploaded_at TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS subscription_verified_by INTEGER REFERENCES users(id),
-        ADD COLUMN IF NOT EXISTS subscription_verified_at TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS subscription_notes TEXT,
-        ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT true,
         ADD COLUMN IF NOT EXISTS full_name VARCHAR(255),
         ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50),
         ADD COLUMN IF NOT EXISTS join_request_date TIMESTAMP,
         ADD COLUMN IF NOT EXISTS join_request_plan VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS join_request_status VARCHAR(50) DEFAULT 'pending'
+        ADD COLUMN IF NOT EXISTS join_request_status VARCHAR(50) DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS subscription_start DATE,
+        ADD COLUMN IF NOT EXISTS subscription_end DATE
       `);
-      console.log('✅ Subscription columns added');
+      console.log('✅ Columns added successfully');
+    } else {
+      console.log('✅ All columns exist');
     }
   } catch (error) {
     console.error('❌ Error adding columns:', error.message);
@@ -204,13 +201,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP,
         login_attempts INTEGER DEFAULT 0,
-        locked_until TIMESTAMP,
-        is_approved BOOLEAN DEFAULT false,
-        full_name VARCHAR(255),
-        phone_number VARCHAR(50),
-        join_request_date TIMESTAMP,
-        join_request_plan VARCHAR(50),
-        join_request_status VARCHAR(50) DEFAULT 'pending'
+        locked_until TIMESTAMP
       )
     `);
     console.log('✅ Users table ready');
@@ -327,6 +318,9 @@ async function initDatabase() {
     `);
     console.log('✅ Join requests table ready');
 
+    // Ensure all columns exist
+    await ensureColumns();
+
     // ===== SECURITY: Create Super Admin =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
     const adminPassword = process.env.ADMIN_PASSWORD || '08800+_+Owner!';
@@ -337,8 +331,8 @@ async function initDatabase() {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const hashedSecret = await bcrypt.hash(adminSecret, 10);
       await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, heard_from, is_approved, full_name) 
-         VALUES ($1, $2, $3, 'super_admin', 'system', true, 'Super Administrator')`,
+        `INSERT INTO users (username, password, secret_code, role, heard_from) 
+         VALUES ($1, $2, $3, 'super_admin', 'system')`,
         [adminUsername, hashedPassword, hashedSecret]
       );
       console.log('✅ Super Admin created');
@@ -361,8 +355,6 @@ async function initDatabase() {
         VALUES (0, 0, 0, 0, 0, 0)
       `);
     }
-
-    await addMissingColumns();
 
     const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
     const videoCount = await pool.query('SELECT COUNT(*) as count FROM videos');
@@ -390,7 +382,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await pool.query(
-      'SELECT id, username, role, is_approved FROM users WHERE id = $1',
+      'SELECT id, username, role FROM users WHERE id = $1',
       [decoded.userId]
     );
     
@@ -421,11 +413,11 @@ const authorize = (...roles) => {
   };
 };
 
-// ============ GET CURRENT USER (FIX) ============
+// ============ GET CURRENT USER ============
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     const user = await pool.query(
-      'SELECT id, username, role, is_approved, full_name, phone_number FROM users WHERE id = $1',
+      'SELECT id, username, role, full_name, phone_number FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json({ user: user.rows[0] });
@@ -491,9 +483,9 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedSecret = await bcrypt.hash(secretCode, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, role, is_approved) 
-       VALUES ($1, $2, $3, 'user', true) 
-       RETURNING id, username, role, is_approved`,
+      `INSERT INTO users (username, password, secret_code, role) 
+       VALUES ($1, $2, $3, 'user') 
+       RETURNING id, username, role`,
       [username, hashedPassword, hashedSecret]
     );
 
@@ -523,7 +515,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = await pool.query(
-      'SELECT id, username, password, role, is_approved FROM users WHERE username = $1',
+      'SELECT id, username, password, role FROM users WHERE username = $1',
       [username]
     );
 
@@ -534,10 +526,6 @@ app.post('/api/auth/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.rows[0].password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    if (!user.rows[0].is_approved) {
-      return res.status(403).json({ error: 'Account pending approval' });
     }
 
     await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.rows[0].id]);
@@ -553,8 +541,7 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user.rows[0].id,
         username: user.rows[0].username,
-        role: user.rows[0].role,
-        is_approved: user.rows[0].is_approved
+        role: user.rows[0].role
       }
     });
   } catch (error) {
@@ -697,10 +684,10 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
       const hashedSecret = await bcrypt.hash(secretCode, 10);
 
       const userResult = await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, is_approved, join_request_date, join_request_plan) 
-         VALUES ($1, $2, $3, 'creator', $4, $5, true, CURRENT_TIMESTAMP, $6) 
+        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number) 
+         VALUES ($1, $2, $3, 'creator', $4, $5) 
          RETURNING id, username, role`,
-        [username, hashedPassword, hashedSecret, request.full_name, request.phone_number, request.plan]
+        [username, hashedPassword, hashedSecret, request.full_name, request.phone_number]
       );
 
       await pool.query(
@@ -746,9 +733,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
         COUNT(*) as total_users,
         COUNT(CASE WHEN role = 'super_admin' THEN 1 END) as super_admins,
         COUNT(CASE WHEN role = 'creator' THEN 1 END) as creators,
-        COUNT(CASE WHEN role = 'user' THEN 1 END) as regular_users,
-        COUNT(CASE WHEN is_approved = true THEN 1 END) as approved_users,
-        COUNT(CASE WHEN is_approved = false THEN 1 END) as pending_users
+        COUNT(CASE WHEN role = 'user' THEN 1 END) as regular_users
       FROM users
     `);
 
@@ -775,7 +760,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     const commentCount = await pool.query('SELECT COUNT(*) as total_comments FROM comments');
 
     const recentUsers = await pool.query(`
-      SELECT id, username, role, is_approved, created_at, full_name
+      SELECT id, username, role, created_at, full_name
       FROM users 
       ORDER BY created_at DESC 
       LIMIT 10
@@ -823,7 +808,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
 app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, username, role, is_approved, created_at, last_login, full_name, phone_number
+      SELECT id, username, role, created_at, last_login, full_name, phone_number
       FROM users 
       ORDER BY created_at DESC
     `);
