@@ -52,9 +52,10 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false 
 }));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
@@ -302,70 +303,39 @@ async function initDatabase() {
 
 // ============ AUTH MIDDLEWARE ============
 const authenticate = async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'No token' });
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await pool.query('SELECT id, username, role, subscription_status FROM users WHERE id = $1', [decoded.userId]);
-    if (!user.rows.length) return res.status(401).json({ error: 'Invalid token' });
+    
+    // Get user
+    const user = await pool.query(
+      'SELECT id, username, role, subscription_status FROM users WHERE id = $1',
+      [decoded.userId]
+    );
+    
+    if (!user.rows.length) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
     req.user = user.rows[0];
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
     }
-    res.status(403).json({ error: 'Invalid token' });
-  }
-};
-
-// ============ SUBSCRIPTION CHECK MIDDLEWARE ============
-const checkSubscription = async (req, res, next) => {
-  // SuperAdmin always has access
-  if (req.user.role === 'super_admin') {
-    return next();
-  }
-  
-  // Check if user is a creator (admin)
-  if (req.user.role === 'admin' || req.user.role === 'creator') {
-    const user = await pool.query(
-      'SELECT subscription_status, subscription_end FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    
-    if (user.rows.length === 0) {
-      return res.status(403).json({ error: 'User not found' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
     }
-    
-    const subscription = user.rows[0];
-    
-    // Check if subscription is active
-    if (subscription.subscription_status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Subscription required',
-        message: 'Your subscription has expired. Please renew to continue uploading.',
-        code: 'SUBSCRIPTION_EXPIRED'
-      });
-    }
-    
-    // Check if subscription has expired (if end date is set)
-    if (subscription.subscription_end) {
-      const today = new Date();
-      const endDate = new Date(subscription.subscription_end);
-      if (endDate < today) {
-        await pool.query(
-          'UPDATE users SET subscription_status = $1 WHERE id = $2',
-          ['inactive', req.user.id]
-        );
-        return res.status(403).json({ 
-          error: 'Subscription expired',
-          message: 'Your subscription has expired. Please renew to continue uploading.',
-          code: 'SUBSCRIPTION_EXPIRED'
-        });
-      }
-    }
+    console.error('Auth error:', error.message);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
-  
-  next();
 };
 
 const authorize = (...roles) => {
@@ -469,12 +439,15 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
-  // Get full user data including subscription
-  const userData = await pool.query(
-    'SELECT id, username, role, subscription_status, subscription_plan, subscription_start, subscription_end FROM users WHERE id = $1',
-    [req.user.id]
-  );
-  res.json({ user: userData.rows[0] });
+  try {
+    const userData = await pool.query(
+      'SELECT id, username, role, subscription_status, subscription_plan, subscription_start, subscription_end FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json({ user: userData.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get user info' });
+  }
 });
 
 app.post('/api/auth/heard-from', authenticate, async (req, res) => {
@@ -501,7 +474,7 @@ app.get('/api/subscription/plans', (req, res) => {
   });
 });
 
-// Get payment settings (for users to see where to pay)
+// Get payment settings
 app.get('/api/subscription/payment-settings', async (req, res) => {
   try {
     const result = await pool.query('SELECT bank_name, account_number, account_owner, phone_number FROM payment_settings LIMIT 1');
@@ -543,7 +516,7 @@ app.put('/api/subscription/payment-settings', authenticate, authorize('super_adm
   }
 });
 
-// Request subscription (Creator/User)
+// Request subscription
 app.post('/api/subscription/request', authenticate, async (req, res) => {
   try {
     const { plan } = req.body;
@@ -620,14 +593,13 @@ app.post('/api/subscription/request', authenticate, async (req, res) => {
   }
 });
 
-// Upload payment proof (Creator/User)
+// Upload payment proof
 app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Proof image is required' });
     }
     
-    // Users cannot upload proof - only creators (admins)
     if (req.user.role !== 'admin' && req.user.role !== 'creator') {
       return res.status(403).json({ error: 'Only creators can upload payment proof' });
     }
@@ -654,7 +626,7 @@ app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'),
   }
 });
 
-// Get subscription proof for verification (SuperAdmin only)
+// Get subscription proof (SuperAdmin only)
 app.get('/api/subscription/proof/:userId', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -699,7 +671,6 @@ app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admi
     const { approve, notes } = req.body;
     
     if (approve) {
-      // Activate subscription
       await pool.query(
         `UPDATE users SET 
           subscription_status = 'active',
@@ -710,7 +681,6 @@ app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admi
         [req.user.id, notes || 'Approved', userId]
       );
       
-      // If user is not already a creator, make them one
       await pool.query(
         `UPDATE users SET role = 'creator' WHERE id = $1 AND role = 'user'`,
         [userId]
@@ -719,7 +689,6 @@ app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admi
       await logUserActivity(req.user.id, 'approve_subscription', { userId }, req);
       res.json({ success: true, message: 'Subscription approved and activated' });
     } else {
-      // Reject subscription
       await pool.query(
         `UPDATE users SET 
           subscription_status = 'rejected',
@@ -738,7 +707,7 @@ app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admi
   }
 });
 
-// Get subscription status for current user
+// Get subscription status
 app.get('/api/subscription/status', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
@@ -900,7 +869,7 @@ app.get('/api/admin/my-videos', authenticate, authorize('creator', 'super_admin'
 });
 
 // ============ VIDEO UPLOAD ============
-app.post('/api/videos/upload', authenticate, checkSubscription, authorize('creator', 'super_admin'), upload.fields([
+app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
@@ -1064,7 +1033,7 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-app.put('/api/videos/:id', authenticate, checkSubscription, authorize('creator', 'super_admin'), async (req, res) => {
+app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
@@ -1091,7 +1060,7 @@ app.put('/api/videos/:id', authenticate, checkSubscription, authorize('creator',
   }
 });
 
-app.delete('/api/videos/:id', authenticate, checkSubscription, authorize('creator', 'super_admin'), async (req, res) => {
+app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     
