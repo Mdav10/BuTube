@@ -349,7 +349,7 @@ async function initDatabase() {
     if (paymentCheck.rows.length === 0) {
       await pool.query(`
         INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number)
-        VALUES ('Equity Bank', '1234567890', 'AKABAKUZE Platform', '+250 788 888 888')
+        VALUES ('Equity Bank', '1234567890', 'BuTube Platform', '+250 788 888 888')
       `);
     }
 
@@ -421,6 +421,19 @@ const authorize = (...roles) => {
   };
 };
 
+// ============ GET CURRENT USER (FIX) ============
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const user = await pool.query(
+      'SELECT id, username, role, is_approved, full_name, phone_number FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json({ user: user.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
 async function logUserActivity(userId, action, details, req) {
   try {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -447,6 +460,108 @@ const isValidFullName = (name) => {
 const isValidEmail = (email) => {
   return !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
+
+// ============ AUTH ROUTES ============
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, secretCode } = req.body;
+
+    if (!username || !password || !secretCode) {
+      return res.status(400).json({ error: 'Username, password, and secret code are required' });
+    }
+
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (secretCode.length < 4) {
+      return res.status(400).json({ error: 'Secret code must be at least 4 characters' });
+    }
+
+    const userCheck = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedSecret = await bcrypt.hash(secretCode, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users (username, password, secret_code, role, is_approved) 
+       VALUES ($1, $2, $3, 'user', true) 
+       RETURNING id, username, role, is_approved`,
+      [username, hashedPassword, hashedSecret]
+    );
+
+    const token = jwt.sign(
+      { userId: result.rows[0].id, username: result.rows[0].username },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: result.rows[0],
+      message: 'Registration successful!'
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Registration failed: ' + error.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    const user = await pool.query(
+      'SELECT id, username, password, role, is_approved FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (user.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.rows[0].password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!user.rows[0].is_approved) {
+      return res.status(403).json({ error: 'Account pending approval' });
+    }
+
+    await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.rows[0].id]);
+
+    const token = jwt.sign(
+      { userId: user.rows[0].id, username: user.rows[0].username },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.rows[0].id,
+        username: user.rows[0].username,
+        role: user.rows[0].role,
+        is_approved: user.rows[0].is_approved
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed: ' + error.message });
+  }
+});
 
 // ============ JOIN US - REQUEST CREATOR ACCOUNT ============
 app.post('/api/join/request', upload.single('proof'), async (req, res) => {
@@ -626,7 +741,6 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
 // ============ SUPER ADMIN DASHBOARD STATS ============
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    // Get all users count by role
     const userStats = await pool.query(`
       SELECT 
         COUNT(*) as total_users,
@@ -638,7 +752,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       FROM users
     `);
 
-    // Get video stats
     const videoStats = await pool.query(`
       SELECT 
         COUNT(*) as total_videos,
@@ -650,7 +763,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       FROM videos
     `);
 
-    // Get join request stats
     const joinRequestStats = await pool.query(`
       SELECT 
         COUNT(*) as total_requests,
@@ -660,10 +772,8 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       FROM join_requests
     `);
 
-    // Get comments count
     const commentCount = await pool.query('SELECT COUNT(*) as total_comments FROM comments');
 
-    // Get recent users (last 10)
     const recentUsers = await pool.query(`
       SELECT id, username, role, is_approved, created_at, full_name
       FROM users 
@@ -671,7 +781,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 10
     `);
 
-    // Get recent videos (last 10)
     const recentVideos = await pool.query(`
       SELECT id, title, views, likes, created_at, uploader_name
       FROM videos 
@@ -679,7 +788,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 10
     `);
 
-    // Get recent join requests
     const recentJoinRequests = await pool.query(`
       SELECT id, full_name, phone_number, plan, status, created_at
       FROM join_requests 
@@ -687,7 +795,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 10
     `);
 
-    // Get website stats
     const websiteStats = await pool.query('SELECT * FROM website_stats LIMIT 1');
 
     res.json({
@@ -727,33 +834,35 @@ app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, 
   }
 });
 
-// ============ UPDATE USER ROLE (Admin) ============
-app.put('/api/admin/users/:id/role', authenticate, authorize('super_admin'), async (req, res) => {
+// ============ PAYMENT SETTINGS ============
+app.get('/api/payment-settings', async (req, res) => {
   try {
-    const userId = parseInt(req.params.id);
-    const { role } = req.body;
-
-    if (!['user', 'creator', 'super_admin'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role' });
-    }
-
-    // Prevent changing own role
-    if (userId === req.user.id) {
-      return res.status(400).json({ error: 'You cannot change your own role' });
-    }
-
-    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, userId]);
-    
-    await logUserActivity(req.user.id, 'update_user_role', { userId, role }, req);
-    
-    res.json({ success: true, message: 'User role updated successfully' });
+    const result = await pool.query('SELECT * FROM payment_settings ORDER BY id DESC LIMIT 1');
+    res.json(result.rows);
   } catch (error) {
-    console.error('Update role error:', error);
-    res.status(500).json({ error: 'Failed to update user role' });
+    console.error('Payment settings error:', error);
+    res.status(500).json({ error: 'Failed to get payment settings' });
   }
 });
 
-// ============ VIDEO ROUTES - STREAM FROM DATABASE ============
+app.post('/api/payment-settings', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const { bankName, accountNumber, accountOwner, phoneNumber } = req.body;
+    
+    await pool.query(
+      `INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number, updated_by, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+      [bankName, accountNumber, accountOwner, phoneNumber, req.user.id]
+    );
+    
+    res.json({ success: true, message: 'Payment settings updated' });
+  } catch (error) {
+    console.error('Update payment error:', error);
+    res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// ============ VIDEO ROUTES ============
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -774,7 +883,6 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// ============ UPLOAD VIDEO ============
 app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -832,7 +940,6 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   }
 });
 
-// ============ STREAM VIDEO FROM DATABASE ============
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -859,7 +966,6 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   }
 });
 
-// ============ GET THUMBNAIL FROM DATABASE ============
 app.get('/api/videos/:id/thumbnail', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -885,7 +991,6 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
   }
 });
 
-// ============ GET VIDEO DETAILS ============
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -924,7 +1029,6 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// ============ UPDATE VIDEO ============
 app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -952,7 +1056,6 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
   }
 });
 
-// ============ DELETE VIDEO ============
 app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -975,7 +1078,6 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
   }
 });
 
-// ============ PUBLIC INTERACTIONS ============
 app.post('/api/videos/:id/like', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
