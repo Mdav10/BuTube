@@ -337,8 +337,8 @@ async function initDatabase() {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const hashedSecret = await bcrypt.hash(adminSecret, 10);
       await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, heard_from, subscription_status, is_approved, full_name) 
-         VALUES ($1, $2, $3, 'super_admin', 'system', 'active', true, 'Super Administrator')`,
+        `INSERT INTO users (username, password, secret_code, role, heard_from, is_approved, full_name) 
+         VALUES ($1, $2, $3, 'super_admin', 'system', true, 'Super Administrator')`,
         [adminUsername, hashedPassword, hashedSecret]
       );
       console.log('✅ Super Admin created');
@@ -390,7 +390,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await pool.query(
-      'SELECT id, username, role, subscription_status, is_approved FROM users WHERE id = $1',
+      'SELECT id, username, role, is_approved FROM users WHERE id = $1',
       [decoded.userId]
     );
     
@@ -582,577 +582,174 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
       const hashedSecret = await bcrypt.hash(secretCode, 10);
 
       const userResult = await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, is_approved, subscription_status, join_request_date, join_request_plan) 
-         VALUES ($1, $2, $3, 'creator', $4, $5, false, 'pending', CURRENT_TIMESTAMP, $6) 
+        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, is_approved, join_request_date, join_request_plan) 
+         VALUES ($1, $2, $3, 'creator', $4, $5, true, CURRENT_TIMESTAMP, $6) 
          RETURNING id, username, role`,
         [username, hashedPassword, hashedSecret, request.full_name, request.phone_number, request.plan]
       );
 
       await pool.query(
-        `UPDATE join_requests SET status = 'approved', processed_by = $1, processed_at = CURRENT_TIMESTAMP, notes = $2, user_id = $3 WHERE id = $4`,
-        [req.user.id, notes || 'Approved', userResult.rows[0].id, requestId]
+        'UPDATE join_requests SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP, user_id = $3, notes = $4 WHERE id = $5',
+        ['approved', req.user.id, userResult.rows[0].id, notes || null, requestId]
       );
 
       await logUserActivity(req.user.id, 'approve_join_request', { 
         requestId, 
-        username, 
-        fullName: request.full_name 
+        userId: userResult.rows[0].id,
+        username 
       }, req);
 
-      res.json({
-        success: true,
-        message: `✅ User "${username}" has been approved and account created!`,
+      res.json({ 
+        success: true, 
+        message: `User ${username} has been approved as a creator!`,
         user: userResult.rows[0]
       });
-
     } else {
       await pool.query(
-        `UPDATE join_requests SET status = 'rejected', processed_by = $1, processed_at = CURRENT_TIMESTAMP, notes = $2 WHERE id = $3`,
-        [req.user.id, notes || 'Rejected', requestId]
+        'UPDATE join_requests SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP, notes = $3 WHERE id = $4',
+        ['rejected', req.user.id, notes || 'Request rejected', requestId]
       );
 
       await logUserActivity(req.user.id, 'reject_join_request', { 
-        requestId, 
-        fullName: request.full_name 
+        requestId,
+        phoneNumber: request.phone_number 
       }, req);
 
-      res.json({
-        success: true,
-        message: 'Request rejected successfully'
-      });
+      res.json({ success: true, message: 'Request rejected' });
     }
-
   } catch (error) {
-    console.error('❌ Process join request error:', error);
+    console.error('Process request error:', error);
     res.status(500).json({ error: 'Failed to process request: ' + error.message });
   }
 });
 
-// ============ GET PROOF IMAGE ============
-app.get('/api/admin/proof/:id', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    
-    const result = await pool.query(
-      'SELECT proof_image, proof_mimetype FROM join_requests WHERE id = $1',
-      [requestId]
-    );
-    
-    if (result.rows.length === 0 || !result.rows[0].proof_image) {
-      return res.status(404).json({ error: 'No proof found' });
-    }
-    
-    const proof = result.rows[0];
-    res.setHeader('Content-Type', proof.proof_mimetype || 'image/jpeg');
-    res.send(proof.proof_image);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get proof' });
-  }
-});
-
-// ============ AUTH ROUTES ============
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { username, password, secretCode, heardFrom } = req.body;
-    if (!username || !password || !secretCode) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
-    
-    const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (existing.rows.length) return res.status(400).json({ error: 'Username exists' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedSecret = await bcrypt.hash(secretCode, 10);
-    
-    const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, heard_from, role, subscription_status, is_approved) 
-       VALUES ($1, $2, $3, $4, 'user', 'inactive', false) RETURNING id, username, role`,
-      [username, hashedPassword, hashedSecret, heardFrom]
-    );
-    
-    await pool.query('UPDATE website_stats SET total_users = total_users + 1, total_visits = total_visits + 1');
-    await logUserActivity(result.rows[0].id, 'register', { heardFrom }, req);
-    
-    const token = jwt.sign(
-      { userId: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.json({ token, user: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { username, password, secretCode } = req.body;
-    if (!username || !password || !secretCode) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
-    
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (!result.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
-
-    const user = result.rows[0];
-    const validPassword = await bcrypt.compare(password, user.password);
-    const validSecret = await bcrypt.compare(secretCode, user.secret_code);
-    
-    if (!validPassword || !validSecret) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    await pool.query('UPDATE website_stats SET total_visits = total_visits + 1');
-    await logUserActivity(user.id, 'login', { success: true }, req);
-    
-    const token = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.json({ 
-      token, 
-      user: { 
-        id: user.id, 
-        username: user.username, 
-        role: user.role,
-        subscription_status: user.subscription_status || 'inactive',
-        is_approved: user.is_approved || false
-      } 
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-app.get('/api/auth/me', authenticate, async (req, res) => {
-  try {
-    const userData = await pool.query(
-      'SELECT id, username, role, subscription_status, is_approved, subscription_plan, subscription_start, subscription_end, full_name, phone_number FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    res.json({ user: userData.rows[0] });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get user info' });
-  }
-});
-
-app.post('/api/auth/heard-from', authenticate, async (req, res) => {
-  try {
-    const { heardFrom } = req.body;
-    await pool.query('UPDATE users SET heard_from = $1 WHERE id = $2', [heardFrom, req.user.id]);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update' });
-  }
-});
-
-// ============ SUBSCRIPTION ROUTES ============
-app.get('/api/subscription/plans', (req, res) => {
-  res.json({
-    plans: [
-      { id: 'monthly', name: 'Monthly', price: 50, duration: '1 month' },
-      { id: 'quarterly', name: 'Quarterly', price: 100, duration: '3 months' },
-      { id: 'semiannual', name: 'Semi-Annual', price: 150, duration: '6 months' },
-      { id: 'yearly', name: 'Yearly', price: 300, duration: '12 months' }
-    ]
-  });
-});
-
-app.get('/api/subscription/payment-settings', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT bank_name, account_number, account_owner, phone_number FROM payment_settings LIMIT 1');
-    if (result.rows.length === 0) {
-      return res.json({ bank_name: 'Not set', account_number: 'Not set', account_owner: 'Not set', phone_number: 'Not set' });
-    }
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get payment settings' });
-  }
-});
-
-app.put('/api/subscription/payment-settings', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const { bank_name, account_number, account_owner, phone_number } = req.body;
-    await pool.query(
-      `UPDATE payment_settings SET bank_name = $1, account_number = $2, account_owner = $3, phone_number = $4, updated_by = $5, updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
-      [bank_name, account_number, account_owner, phone_number, req.user.id]
-    );
-    await logUserActivity(req.user.id, 'update_payment_settings', { bank_name, account_number }, req);
-    res.json({ success: true, message: 'Payment settings updated' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update payment settings' });
-  }
-});
-
-app.post('/api/subscription/request', authenticate, async (req, res) => {
-  try {
-    const { plan } = req.body;
-    
-    if (req.user.role !== 'admin' && req.user.role !== 'creator') {
-      return res.status(403).json({ error: 'Only creators can request subscription' });
-    }
-    
-    const userCheck = await pool.query('SELECT subscription_status FROM users WHERE id = $1', [req.user.id]);
-    if (userCheck.rows[0].subscription_status === 'active') {
-      return res.status(400).json({ error: 'You already have an active subscription' });
-    }
-    
-    const startDate = new Date();
-    let endDate = new Date();
-    let planName = '';
-    let planPrice = 0;
-    
-    switch(plan) {
-      case 'monthly': endDate.setMonth(endDate.getMonth() + 1); planName = 'Monthly'; planPrice = 50; break;
-      case 'quarterly': endDate.setMonth(endDate.getMonth() + 3); planName = 'Quarterly'; planPrice = 100; break;
-      case 'semiannual': endDate.setMonth(endDate.getMonth() + 6); planName = 'Semi-Annual'; planPrice = 150; break;
-      case 'yearly': endDate.setFullYear(endDate.getFullYear() + 1); planName = 'Yearly'; planPrice = 300; break;
-      default: return res.status(400).json({ error: 'Invalid plan selected' });
-    }
-    
-    await pool.query(
-      `UPDATE users SET subscription_status = 'pending', subscription_plan = $1, subscription_start = $2, subscription_end = $3 WHERE id = $4`,
-      [`${planName} - $${planPrice}`, startDate, endDate, req.user.id]
-    );
-    
-    await logUserActivity(req.user.id, 'request_subscription', { plan, price: planPrice }, req);
-    
-    res.json({ success: true, message: 'Subscription request submitted. Please upload payment proof.', plan: planName, price: planPrice, startDate, endDate });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to request subscription' });
-  }
-});
-
-app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'Proof image is required' });
-    if (req.user.role !== 'admin' && req.user.role !== 'creator') {
-      return res.status(403).json({ error: 'Only creators can upload payment proof' });
-    }
-    
-    const proofFile = req.file;
-    await pool.query(
-      `UPDATE users SET subscription_proof_image = $1, subscription_proof_mimetype = $2, subscription_proof_uploaded_at = CURRENT_TIMESTAMP WHERE id = $3`,
-      [proofFile.buffer, proofFile.mimetype, req.user.id]
-    );
-    
-    await logUserActivity(req.user.id, 'upload_payment_proof', { fileSize: proofFile.size }, req);
-    res.json({ success: true, message: 'Payment proof uploaded. Waiting for admin verification.' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to upload proof' });
-  }
-});
-
-app.get('/api/subscription/proof/:userId', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const userId = parseInt(req.params.id);
-    const result = await pool.query('SELECT subscription_proof_image, subscription_proof_mimetype FROM users WHERE id = $1', [userId]);
-    if (result.rows.length === 0 || !result.rows[0].subscription_proof_image) {
-      return res.status(404).json({ error: 'No proof found' });
-    }
-    const proof = result.rows[0];
-    res.setHeader('Content-Type', proof.subscription_proof_mimetype || 'image/jpeg');
-    res.send(proof.subscription_proof_image);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get proof' });
-  }
-});
-
-app.get('/api/subscription/pending', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT id, username, subscription_plan, subscription_start, subscription_end, 
-             subscription_proof_uploaded_at, subscription_proof_image IS NOT NULL as has_proof
-      FROM users 
-      WHERE subscription_status = 'pending' AND role IN ('admin', 'creator')
-      ORDER BY subscription_proof_uploaded_at DESC
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get pending subscriptions' });
-  }
-});
-
-app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const userId = parseInt(req.params.id);
-    const { approve, notes } = req.body;
-    
-    if (approve) {
-      await pool.query(
-        `UPDATE users SET subscription_status = 'active', subscription_verified_by = $1, subscription_verified_at = CURRENT_TIMESTAMP, subscription_notes = $2, is_approved = true WHERE id = $3`,
-        [req.user.id, notes || 'Approved', userId]
-      );
-      await pool.query(`UPDATE users SET role = 'creator' WHERE id = $1 AND role = 'user'`, [userId]);
-      await logUserActivity(req.user.id, 'approve_subscription', { userId }, req);
-      res.json({ success: true, message: 'Subscription approved and activated' });
-    } else {
-      await pool.query(
-        `UPDATE users SET subscription_status = 'rejected', subscription_notes = $1, subscription_verified_by = $2, subscription_verified_at = CURRENT_TIMESTAMP WHERE id = $3`,
-        [notes || 'Rejected', req.user.id, userId]
-      );
-      await logUserActivity(req.user.id, 'reject_subscription', { userId }, req);
-      res.json({ success: true, message: 'Subscription rejected' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to verify subscription' });
-  }
-});
-
-app.get('/api/subscription/status', authenticate, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT subscription_status, subscription_plan, subscription_start, subscription_end, is_approved FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get subscription status' });
-  }
-});
-
-// ============ ADMIN ROUTES ============
-app.post('/api/admin/create-creator', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const { username, password, secretCode } = req.body;
-    if (!username || !password || !secretCode) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedSecret = await bcrypt.hash(secretCode, 10);
-    
-    const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, role, subscription_status, is_approved) 
-       VALUES ($1, $2, $3, 'creator', 'pending', false) RETURNING id, username, role`,
-      [username, hashedPassword, hashedSecret]
-    );
-    
-    await logUserActivity(req.user.id, 'create_creator', { newCreator: username }, req);
-    
-    res.json({ success: true, creator: result.rows[0], secretCode, message: 'Creator created. They need to subscribe and get approved before uploading.' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create creator' });
-  }
-});
-
-app.post('/api/admin/approve-creator/:userId', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const userId = parseInt(req.params.id);
-    
-    const userCheck = await pool.query('SELECT role, is_approved FROM users WHERE id = $1', [userId]);
-    if (!userCheck.rows.length) return res.status(404).json({ error: 'User not found' });
-    
-    if (userCheck.rows[0].is_approved) {
-      return res.status(400).json({ error: 'User is already approved' });
-    }
-    
-    await pool.query(
-      'UPDATE users SET is_approved = true, role = $1 WHERE id = $2',
-      ['creator', userId]
-    );
-    
-    await logUserActivity(req.user.id, 'approve_creator', { userId }, req);
-    res.json({ success: true, message: 'Creator approved successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to approve creator' });
-  }
-});
-
-app.get('/api/admin/pending-creators', authenticate, authorize('super_admin'), async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT id, username, created_at, subscription_status, subscription_plan
-      FROM users 
-      WHERE role = 'creator' AND is_approved = false
-      ORDER BY created_at DESC
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get pending creators' });
-  }
-});
-
+// ============ SUPER ADMIN DASHBOARD STATS ============
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
-    const users = await pool.query('SELECT COUNT(*) as total FROM users');
-    const creators = await pool.query("SELECT COUNT(*) as total FROM users WHERE role = 'creator'");
-    const pendingCreators = await pool.query("SELECT COUNT(*) as total FROM users WHERE role = 'creator' AND is_approved = false");
-    const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
-    const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
-    const pendingSubs = await pool.query("SELECT COUNT(*) as total FROM users WHERE subscription_status = 'pending' AND role IN ('creator', 'admin')");
-    const joinRequests = await pool.query("SELECT COUNT(*) as total FROM join_requests WHERE status = 'pending'");
-    
-    const allCreators = await pool.query(`
-      SELECT id, username, created_at, subscription_status, is_approved, subscription_plan, full_name, phone_number
+    // Get all users count by role
+    const userStats = await pool.query(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(CASE WHEN role = 'super_admin' THEN 1 END) as super_admins,
+        COUNT(CASE WHEN role = 'creator' THEN 1 END) as creators,
+        COUNT(CASE WHEN role = 'user' THEN 1 END) as regular_users,
+        COUNT(CASE WHEN is_approved = true THEN 1 END) as approved_users,
+        COUNT(CASE WHEN is_approved = false THEN 1 END) as pending_users
+      FROM users
+    `);
+
+    // Get video stats
+    const videoStats = await pool.query(`
+      SELECT 
+        COUNT(*) as total_videos,
+        SUM(views) as total_views,
+        SUM(likes) as total_likes,
+        SUM(dislikes) as total_dislikes,
+        SUM(share_count) as total_shares,
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_videos
+      FROM videos
+    `);
+
+    // Get join request stats
+    const joinRequestStats = await pool.query(`
+      SELECT 
+        COUNT(*) as total_requests,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_requests,
+        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_requests,
+        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_requests
+      FROM join_requests
+    `);
+
+    // Get comments count
+    const commentCount = await pool.query('SELECT COUNT(*) as total_comments FROM comments');
+
+    // Get recent users (last 10)
+    const recentUsers = await pool.query(`
+      SELECT id, username, role, is_approved, created_at, full_name
       FROM users 
-      WHERE role = 'creator'
-      ORDER BY created_at DESC
-    `);
-
-    const allVideos = await pool.query(`
-      SELECT v.id, v.title, v.description, 
-             v.views, v.likes, v.share_count, v.created_at, u.username as uploader_name
-      FROM videos v 
-      JOIN users u ON v.uploader_id = u.id 
-      WHERE v.is_active = true 
-      ORDER BY v.created_at DESC
-      LIMIT 50
-    `);
-
-    const topVideos = await pool.query(`
-      SELECT v.id, v.title, v.views, v.likes, v.share_count, u.username 
-      FROM videos v 
-      JOIN users u ON v.uploader_id = u.id 
-      WHERE v.is_active = true 
-      ORDER BY v.views DESC 
+      ORDER BY created_at DESC 
       LIMIT 10
     `);
 
-    const recentUsers = await pool.query(`
-      SELECT id, username, role, heard_from, created_at, subscription_status, is_approved, full_name, phone_number
-      FROM users 
+    // Get recent videos (last 10)
+    const recentVideos = await pool.query(`
+      SELECT id, title, views, likes, created_at, uploader_name
+      FROM videos 
       ORDER BY created_at DESC 
-      LIMIT 20
+      LIMIT 10
     `);
 
-    const logs = await pool.query(
-      `SELECT l.*, u.username 
-       FROM user_logs l 
-       LEFT JOIN users u ON l.user_id = u.id 
-       ORDER BY l.created_at DESC 
-       LIMIT 100`
-    );
+    // Get recent join requests
+    const recentJoinRequests = await pool.query(`
+      SELECT id, full_name, phone_number, plan, status, created_at
+      FROM join_requests 
+      ORDER BY created_at DESC 
+      LIMIT 10
+    `);
 
-    res.json({
-      success: true,
-      stats: stats.rows[0] || { total_visits: 0, total_users: 0, total_videos: 0, total_views: 0, total_likes: 0, total_comments: 0 },
-      userCount: parseInt(users.rows[0].total),
-      creatorCount: parseInt(creators.rows[0].total),
-      pendingCreators: parseInt(pendingCreators.rows[0].total),
-      videoCount: parseInt(videos.rows[0].total),
-      commentCount: parseInt(comments.rows[0].total),
-      pendingSubscriptions: parseInt(pendingSubs.rows[0].total),
-      pendingJoinRequests: parseInt(joinRequests.rows[0].total),
-      allCreators: allCreators.rows,
-      allVideos: allVideos.rows,
-      topVideos: topVideos.rows,
-      recentUsers: recentUsers.rows,
-      recentLogs: logs.rows || []
-    });
-
-  } catch (error) {
-    console.error('Super stats error:', error);
-    res.status(500).json({ error: 'Failed to get stats: ' + error.message });
-  }
-});
-
-app.get('/api/creator/my-stats', authenticate, authorize('creator'), async (req, res) => {
-  try {
-    const videos = await pool.query(
-      'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as total_views, COALESCE(SUM(likes), 0) as total_likes FROM videos WHERE uploader_id = $1 AND is_active = true',
-      [req.user.id]
-    );
-    
-    const totalVideos = parseInt(videos.rows[0].total) || 0;
-    const totalViews = parseInt(videos.rows[0].total_views) || 0;
-    const totalLikes = parseInt(videos.rows[0].total_likes) || 0;
+    // Get website stats
+    const websiteStats = await pool.query('SELECT * FROM website_stats LIMIT 1');
 
     res.json({
       success: true,
       stats: {
-        totalVideos,
-        totalViews,
-        totalLikes,
-        averageViews: totalVideos > 0 ? Math.round(totalViews / totalVideos) : 0
+        users: userStats.rows[0],
+        videos: videoStats.rows[0],
+        comments: commentCount.rows[0],
+        joinRequests: joinRequestStats.rows[0],
+        website: websiteStats.rows[0] || { total_visits: 0, total_users: 0, total_videos: 0, total_views: 0, total_likes: 0, total_comments: 0 }
+      },
+      recent: {
+        users: recentUsers.rows,
+        videos: recentVideos.rows,
+        joinRequests: recentJoinRequests.rows
       }
     });
+
   } catch (error) {
-    console.error('My stats error:', error);
-    res.status(500).json({ error: 'Failed to get stats: ' + error.message });
+    console.error('❌ Admin stats error:', error);
+    res.status(500).json({ error: 'Failed to get admin statistics: ' + error.message });
   }
 });
 
-app.get('/api/creator/my-videos', authenticate, authorize('creator'), async (req, res) => {
+// ============ GET ALL USERS (Admin) ============
+app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at,
-              CASE WHEN video_data IS NOT NULL THEN true ELSE false END as has_video,
-              CASE WHEN thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
-       FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
-      [req.user.id]
-    );
-    res.json({ success: true, videos: result.rows });
+    const result = await pool.query(`
+      SELECT id, username, role, is_approved, created_at, last_login, full_name, phone_number
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+    res.json(result.rows);
   } catch (error) {
-    console.error('My videos error:', error);
-    res.status(500).json({ error: 'Failed to get your videos: ' + error.message });
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
   }
 });
 
-// ============ VIDEO UPLOAD - STORE IN DATABASE AS BYTEA ============
-app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
-  { name: 'video', maxCount: 1 },
-  { name: 'thumbnail', maxCount: 1 }
-]), async (req, res) => {
+// ============ UPDATE USER ROLE (Admin) ============
+app.put('/api/admin/users/:id/role', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    console.log('📹 Upload request received');
-    
-    const { title, description } = req.body;
-    
-    if (!title || !req.files || !req.files.video) {
-      return res.status(400).json({ error: 'Title and video file are required' });
+    const userId = parseInt(req.params.id);
+    const { role } = req.body;
+
+    if (!['user', 'creator', 'super_admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
     }
-    
-    const videoFile = req.files.video[0];
-    const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
-    
-    if (videoFile.size > 500 * 1024 * 1024) {
-      return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
+
+    // Prevent changing own role
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'You cannot change your own role' });
     }
+
+    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, userId]);
     
-    console.log('📁 Video size:', videoFile.size, 'bytes');
+    await logUserActivity(req.user.id, 'update_user_role', { userId, role }, req);
     
-    // STORE IN DATABASE AS BYTEA
-    const result = await pool.query(
-      `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
-                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-       RETURNING id, title, description, video_mimetype, video_filename, file_size, created_at`,
-      [
-        title, 
-        description || '', 
-        videoFile.buffer,
-        videoFile.mimetype,
-        videoFile.originalname,
-        thumbnailFile ? thumbnailFile.buffer : null,
-        thumbnailFile ? thumbnailFile.mimetype : null,
-        req.user.id, 
-        req.user.username, 
-        videoFile.size
-      ]
-    );
-    
-    await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
-    await logUserActivity(req.user.id, 'upload_video', { 
-      videoId: result.rows[0].id, 
-      title: title,
-      fileSize: videoFile.size 
-    }, req);
-    
-    console.log('✅ Video uploaded successfully to database:', result.rows[0].id);
-    
-    res.json({
-      success: true,
-      message: 'Video uploaded successfully',
-      video: result.rows[0]
-    });
+    res.json({ success: true, message: 'User role updated successfully' });
   } catch (error) {
-    console.error('❌ Upload error:', error);
-    res.status(500).json({ error: 'Upload failed: ' + error.message });
+    console.error('Update role error:', error);
+    res.status(500).json({ error: 'Failed to update user role' });
   }
 });
 
@@ -1165,9 +762,9 @@ app.get('/api/videos', async (req, res) => {
              u.username as uploader_name,
              CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
              CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
-      FROM videos v 
-      JOIN users u ON v.uploader_id = u.id 
-      WHERE v.is_active = true 
+      FROM videos v
+      JOIN users u ON v.uploader_id = u.id
+      WHERE v.is_active = true
       ORDER BY v.created_at DESC
     `);
     res.json(result.rows);
@@ -1177,23 +774,81 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// STREAM VIDEO FROM DATABASE
+// ============ UPLOAD VIDEO ============
+app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    if (!req.files || !req.files['video']) {
+      return res.status(400).json({ error: 'Video file is required' });
+    }
+
+    const videoFile = req.files['video'][0];
+    const thumbnailFile = req.files['thumbnail'] ? req.files['thumbnail'][0] : null;
+
+    const result = await pool.query(
+      `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
+                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, title, description, created_at`,
+      [
+        title,
+        description || '',
+        videoFile.buffer,
+        videoFile.mimetype,
+        videoFile.originalname,
+        thumbnailFile ? thumbnailFile.buffer : null,
+        thumbnailFile ? thumbnailFile.mimetype : null,
+        req.user.id,
+        req.user.username,
+        videoFile.size
+      ]
+    );
+
+    await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
+    
+    await logUserActivity(req.user.id, 'upload_video', { 
+      videoId: result.rows[0].id, 
+      title,
+      fileSize: videoFile.size 
+    }, req);
+
+    res.json({
+      success: true,
+      message: 'Video uploaded successfully!',
+      video: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload video: ' + error.message });
+  }
+});
+
+// ============ STREAM VIDEO FROM DATABASE ============
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     if (isNaN(videoId)) {
       return res.status(400).json({ error: 'Invalid video ID' });
     }
-    
+
     const result = await pool.query(
       'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
-    
+
     if (result.rows.length === 0 || !result.rows[0].video_data) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     const video = result.rows[0];
     res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
     res.setHeader('Content-Length', video.video_data.length);
@@ -1204,23 +859,23 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   }
 });
 
-// GET THUMBNAIL FROM DATABASE
+// ============ GET THUMBNAIL FROM DATABASE ============
 app.get('/api/videos/:id/thumbnail', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     if (isNaN(videoId)) {
       return res.status(400).json({ error: 'Invalid video ID' });
     }
-    
+
     const result = await pool.query(
       'SELECT thumbnail_data, thumbnail_mimetype FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
-    
+
     if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
       return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
     }
-    
+
     const thumbnail = result.rows[0];
     res.setHeader('Content-Type', thumbnail.thumbnail_mimetype || 'image/jpeg');
     res.send(thumbnail.thumbnail_data);
@@ -1230,34 +885,35 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
   }
 });
 
+// ============ GET VIDEO DETAILS ============
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     if (isNaN(videoId)) {
       return res.status(400).json({ error: 'Invalid video ID' });
     }
-    
+
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
-    
+
     const videoResult = await pool.query(`
       SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
              u.username as uploader_name,
              CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
              CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
-      FROM videos v 
-      JOIN users u ON v.uploader_id = u.id 
+      FROM videos v
+      JOIN users u ON v.uploader_id = u.id
       WHERE v.id = $1 AND v.is_active = true
     `, [videoId]);
-    
+
     if (videoResult.rows.length === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     const commentsResult = await pool.query(
       'SELECT id, username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
     );
-    
+
     res.json({
       ...videoResult.rows[0],
       comments: commentsResult.rows
@@ -1268,16 +924,17 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+// ============ UPDATE VIDEO ============
 app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
-    
+
     if (!title) return res.status(400).json({ error: 'Title required' });
 
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
-    
+
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only edit your own videos' });
     }
@@ -1286,22 +943,23 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
       'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING id, title, description, created_at',
       [title, description || '', videoId]
     );
-    
+
     await logUserActivity(req.user.id, 'edit_video', { videoId, title }, req);
-    
     res.json({ success: true, video: result.rows[0] });
   } catch (error) {
+    console.error('Update error:', error);
     res.status(500).json({ error: 'Failed to update video' });
   }
 });
 
+// ============ DELETE VIDEO ============
 app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
-    
+
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
-    
+
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
@@ -1309,7 +967,7 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
     await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
     await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Delete error:', error);
@@ -1329,6 +987,7 @@ app.post('/api/videos/:id/like', async (req, res) => {
     }
     res.json({ success: true });
   } catch (error) {
+    console.error('Like error:', error);
     res.status(500).json({ error: 'Failed to process' });
   }
 });
@@ -1337,7 +996,7 @@ app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { username, comment } = req.body;
-    
+
     if (!username || !comment) {
       return res.status(400).json({ error: 'Name and comment required' });
     }
@@ -1346,9 +1005,9 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING id, username, comment, created_at',
       [videoId, username.trim(), comment.trim()]
     );
-    
+
     await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
-    
+
     res.json({ success: true, comment: result.rows[0] });
   } catch (error) {
     console.error('Comment error:', error);
@@ -1362,6 +1021,7 @@ app.post('/api/videos/:id/share', async (req, res) => {
     await pool.query('UPDATE videos SET share_count = share_count + 1 WHERE id = $1', [videoId]);
     res.json({ success: true });
   } catch (error) {
+    console.error('Share error:', error);
     res.status(500).json({ error: 'Failed to record share' });
   }
 });
@@ -1387,3 +1047,4 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDatabase();
 });
+
