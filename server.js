@@ -152,34 +152,34 @@ pool.connect((err, client, release) => {
 });
 
 // ============ DATABASE INITIALIZATION ============
-async function ensureColumns() {
+async function ensureAllColumns() {
   try {
-    // Check if is_approved column exists
-    const checkResult = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' AND column_name = 'is_approved'
+    console.log('📝 Checking and adding missing columns...');
+    
+    // Add all missing columns to users table
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS last_login TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS login_attempts INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS full_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS join_request_date TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS join_request_plan VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS join_request_status VARCHAR(50) DEFAULT 'pending',
+      ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'pending',
+      ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS subscription_start DATE,
+      ADD COLUMN IF NOT EXISTS subscription_end DATE,
+      ADD COLUMN IF NOT EXISTS subscription_proof_image BYTEA,
+      ADD COLUMN IF NOT EXISTS subscription_proof_mimetype VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS subscription_proof_uploaded_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS subscription_verified_by INTEGER,
+      ADD COLUMN IF NOT EXISTS subscription_verified_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS subscription_notes TEXT
     `);
-
-    if (checkResult.rows.length === 0) {
-      console.log('📝 Adding missing columns to users table...');
-      await pool.query(`
-        ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT true,
-        ADD COLUMN IF NOT EXISTS full_name VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS join_request_date TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS join_request_plan VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS join_request_status VARCHAR(50) DEFAULT 'pending',
-        ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'pending',
-        ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS subscription_start DATE,
-        ADD COLUMN IF NOT EXISTS subscription_end DATE
-      `);
-      console.log('✅ Columns added successfully');
-    } else {
-      console.log('✅ All columns exist');
-    }
+    console.log('✅ All columns checked and added if missing');
   } catch (error) {
     console.error('❌ Error adding columns:', error.message);
   }
@@ -198,10 +198,7 @@ async function initDatabase() {
         secret_code VARCHAR(255) NOT NULL,
         heard_from VARCHAR(100),
         role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP,
-        login_attempts INTEGER DEFAULT 0,
-        locked_until TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✅ Users table ready');
@@ -319,7 +316,7 @@ async function initDatabase() {
     console.log('✅ Join requests table ready');
 
     // Ensure all columns exist
-    await ensureColumns();
+    await ensureAllColumns();
 
     // ===== SECURITY: Create Super Admin =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
@@ -417,7 +414,7 @@ const authorize = (...roles) => {
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     const user = await pool.query(
-      'SELECT id, username, role, full_name, phone_number FROM users WHERE id = $1',
+      'SELECT id, username, role FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json({ user: user.rows[0] });
@@ -528,7 +525,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.rows[0].id]);
+    // Try to update last_login - ignore if column doesn't exist
+    try {
+      await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.rows[0].id]);
+    } catch (updateError) {
+      console.log('Note: last_login column update skipped (column may not exist yet)');
+    }
 
     const token = jwt.sign(
       { userId: user.rows[0].id, username: user.rows[0].username },
@@ -808,7 +810,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
 app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, username, role, created_at, last_login, full_name, phone_number
+      SELECT id, username, role, created_at, full_name, phone_number
       FROM users 
       ORDER BY created_at DESC
     `);
