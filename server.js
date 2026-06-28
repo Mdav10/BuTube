@@ -101,15 +101,26 @@ app.use('/api/videos/upload', uploadLimiter);
 app.use('/api/join/request', joinLimiter);
 
 // ============ STATIC FILES ============
+app.use('/uploads', express.static('uploads'));
 app.use(express.static('public'));
 
 // ============ CREATE DIRECTORIES ============
-['thumbnails'].forEach(dir => {
+['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
 // ============ MULTER CONFIG ============
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, unique);
+  }
+});
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 500 * 1024 * 1024 },
@@ -152,6 +163,7 @@ pool.connect((err, client, release) => {
 // ============ DATABASE INITIALIZATION ============
 async function addMissingColumns() {
   try {
+    // Check if subscription_status column exists
     const columnCheck = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -211,18 +223,16 @@ async function initDatabase() {
         join_request_status VARCHAR(50) DEFAULT 'pending'
       )
     `);
+    console.log('✅ Users table ready');
 
-    // Videos table
+    // Videos table with correct columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
-        video_data BYTEA NOT NULL,
-        video_mimetype VARCHAR(100),
-        video_filename VARCHAR(255),
-        thumbnail_data BYTEA,
-        thumbnail_mimetype VARCHAR(100),
+        video_url VARCHAR(500) NOT NULL,
+        thumbnail_url VARCHAR(500),
         uploader_id INTEGER REFERENCES users(id),
         uploader_name VARCHAR(255),
         views INTEGER DEFAULT 0,
@@ -234,6 +244,7 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
+    console.log('✅ Videos table ready');
 
     // Comments table
     await pool.query(`
@@ -245,6 +256,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Comments table ready');
 
     // User actions table
     await pool.query(`
@@ -257,6 +269,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User actions table ready');
 
     // User logs table
     await pool.query(`
@@ -270,6 +283,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User logs table ready');
 
     // Website stats table
     await pool.query(`
@@ -283,6 +297,7 @@ async function initDatabase() {
         total_comments INTEGER DEFAULT 0
       )
     `);
+    console.log('✅ Website stats table ready');
 
     // Payment settings table
     await pool.query(`
@@ -296,6 +311,7 @@ async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Payment settings table ready');
 
     // Join Requests table
     await pool.query(`
@@ -316,6 +332,7 @@ async function initDatabase() {
         user_id INTEGER REFERENCES users(id)
       )
     `);
+    console.log('✅ Join requests table ready');
 
     // ===== SECURITY: Create Super Admin =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
@@ -343,6 +360,7 @@ async function initDatabase() {
       `);
     }
 
+    // Stats
     const statsCheck = await pool.query('SELECT * FROM website_stats');
     if (statsCheck.rows.length === 0) {
       await pool.query(`
@@ -463,7 +481,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
 
-    // Check if phone number already has a pending request
     const existingRequest = await pool.query(
       'SELECT * FROM join_requests WHERE phone_number = $1 AND status = $2',
       [phoneNumber, 'pending']
@@ -516,6 +533,7 @@ app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), asyn
     `);
     res.json(result.rows);
   } catch (error) {
+    console.error('Join requests error:', error);
     res.status(500).json({ error: 'Failed to get join requests' });
   }
 });
@@ -1068,8 +1086,8 @@ app.get('/api/creator/my-stats', authenticate, authorize('creator'), async (req,
 app.get('/api/creator/my-videos', authenticate, authorize('creator'), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at, 
-              CASE WHEN video_data IS NOT NULL THEN true ELSE false END as has_video
+      `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at,
+              video_url, thumbnail_url
        FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
       [req.user.id]
     );
@@ -1087,8 +1105,6 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
 ]), async (req, res) => {
   try {
     console.log('📹 Upload request received');
-    console.log('Body:', req.body);
-    console.log('Files:', req.files);
     
     const { title, description } = req.body;
     
