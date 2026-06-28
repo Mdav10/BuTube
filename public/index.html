@@ -78,6 +78,176 @@
         .full-page .back-btn:hover { background: rgba(255,255,255,0.15); transform: translateX(-4px); }
         .full-page .page-title { font-size: 1.3rem; font-weight: 800; flex: 1; }
 
+        /* Bank Details */
+        .bank-details { background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.05); }
+        .bank-details h3 { color: #ff6b6b; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+        .bank-details p { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; flex-wrap: wrap; color: #aaa; font-size: 0.9rem; }
+        .bank-details p:last-child { border-bottom: none; }
+        .bank-details .label { color: #888; }
+        .bank-details .value { color: #fff; font-weight: 500; }
+
+        /* Upload */
+        .upload-container { max-width: 550px; margin: 0 auto; background: #1a1a1a; padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .upload-container input, .upload-container textarea { width: 100%; padding: 10px 14px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; font-family: inherit; }
+        .upload-container textarea { min-height: 80px; resize: vertical; }
+        .upload-container input:focus, .upload-container textarea:focus { outline: none; border-color: #ff6b6b; }
+        .upload-container .file-input { padding: 20px 16px; border: 2px dashed rgba(255,255,255,0.08); border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px; background: rgba(255,255,255,0.02); }
+        .upload-container .file-input:hover { border-color: #ff6b6b; background: rgba(255,107,107,0.02); }
+        .upload-container .file-input .icon { font-size: 2rem; color: #ff6b6b; margin-bottom: 4px; }
+        .upload-container .file-input p { color: #aaa; font-size: 0.9rem; }
+        .upload-container .file-input small { color: #666; font-size: 0.75rem; }
+        .upload-container .file-input .file-name { color: #00b894; margin-top: 4px; font-weight: 500; display: none; }
+        .upload-container .file-input.has-file .file-name { display: block; }
+        .upload-container .file-input.has-file { border-color: #00b894; background: rgba(0,184,148,0.05); }
+        .upload-container .btn-upload { width: 100%; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; position: relative; }
+        .upload-container .btn-upload:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .upload-container .btn-upload:disabled { opacity: 0.7; cursor: not-allowed; }
+        .upload-container .progress-container { display: none; margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; }
+        .upload-container .progress-container .progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+        .upload-container .progress-container .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #ee5a24); width: 0%; transition: width 0.3s ease; }
+        .upload-container .progress-container .progress-text { color: #888; font-size: 0.85rem; margin-top: 4px; }
+
+        /* My Videos */
+        .my-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+        .my-video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
+        .my-video-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
+        .my-video-card .thumbnail { width: 100%; height: 140px; object-fit: cover; background: #111; cursor: pointer; }
+        .my-video-card .info { padding: 12px; cursor: pointer; }
+        .my-video-card .info .title { font-weight: 600; margin-bottom: 4px; font-size: 0.95rem; }
+        .my-video-card .info .meta { font-size: 0.75rem; color: #888; display: flex; gap: 10px; flex-wrap: wrap; }
+        .my-video-card .info .meta span { display: flex; align-items: center; gap: 4px; }
+        .my-video-card .card-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .my-video-card .card-actions button { flex: 1; padding: 6px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; }
+        .my-video-card .card-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .my-video-card .card-actions .btn-edit { background: rgba(255,165,0,0.2); color: #ffa500; }
+        .my-video-card .card-actions .btn-edit:hover:not(:disabled) { background: rgba(255,165,0,0.4); }
+        .my-video-card .card-actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
+        .my-video-card .card-actions .btn-delete:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
+
+        /* Admin */
+        .admin-container { padding: 15px 0; max-width: 1400px; margin: 0 auto; }
+        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .admin-stat-card { background: #1a1a1a; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
+        .admin-stat-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
+        .admin-stat-card .icon { font-size: 1.6rem; color: #ff6b6b; margin-bottom: 4px; }
+        .admin-stat-card .number { font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #ff6b6b, #ee5a24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .admin-stat-card .label { color: #888; font-size: 0.8rem; margin-top: 2px; }
+        .admin-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .admin-section { background: #1a1a1a; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; }
+        .admin-section h3 { font-size: 0.95rem; margin-bottom: 10px; color: #fff; display: flex; align-items: center; gap: 6px; position: sticky; top: 0; background: #1a1a1a; padding-bottom: 6px; z-index: 1; }
+        .admin-section h3 i { color: #ff6b6b; }
+        .admin-section input { width: 100%; padding: 8px 12px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.9rem; font-family: inherit; }
+        .admin-section input:focus { outline: none; border-color: #ff6b6b; }
+        .admin-section .btn-primary { padding: 10px 20px; border: none; border-radius: 8px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; position: relative; }
+        .admin-section .btn-primary:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .admin-section .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .list-item { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #aaa; flex-wrap: wrap; gap: 4px; }
+        .list-item .name { color: #fff; font-weight: 500; }
+        .list-item .meta { color: #666; font-size: 0.75rem; }
+        .list-item .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+        .list-item .actions button { padding: 3px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: 600; transition: all 0.3s ease; position: relative; }
+        .list-item .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .list-item .actions .btn-approve { background: rgba(0,184,148,0.2); color: #00b894; }
+        .list-item .actions .btn-approve:hover:not(:disabled) { background: rgba(0,184,148,0.4); }
+        .list-item .actions .btn-reject { background: rgba(255,0,0,0.2); color: #ff4444; }
+        .list-item .actions .btn-reject:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
+        .list-item .actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
+        .list-item .actions .btn-delete:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
+        .list-item .actions .btn-view { background: rgba(52,152,219,0.2); color: #3498db; }
+        .list-item .actions .btn-view:hover:not(:disabled) { background: rgba(52,152,219,0.4); }
+
+        /* Join & Subscription */
+        .join-container, .subscription-container { max-width: 600px; margin: 0 auto; background: #1a1a1a; padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .join-container .sub, .subscription-container .sub { color: #888; margin-bottom: 20px; text-align: center; font-size: 0.9rem; }
+        .join-container .join-form input, .join-container .join-form select { width: 100%; padding: 10px 14px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; font-family: inherit; }
+        .join-container .join-form input:focus, .join-container .join-form select:focus { outline: none; border-color: #ff6b6b; }
+        .join-container .join-form input::placeholder { color: #555; }
+        .join-container .join-form select option { background: #1a1a1a; }
+        .join-container .btn-submit-join, .subscription-container .btn-subscribe { width: 100%; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; position: relative; }
+        .join-container .btn-submit-join:hover:not(:disabled), .subscription-container .btn-subscribe:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .join-container .btn-submit-join:disabled, .subscription-container .btn-subscribe:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        /* Subscription Plans */
+        .subscription-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+        .plan-card { background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px 12px; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+        .plan-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.3); }
+        .plan-card.selected { border-color: #ff6b6b; background: rgba(255,107,107,0.05); }
+        .plan-card h4 { font-size: 0.95rem; margin-bottom: 4px; }
+        .plan-card .price { font-size: 1.5rem; font-weight: 800; color: #ff6b6b; }
+        .plan-card .duration { color: #888; font-size: 0.75rem; margin-bottom: 8px; }
+
+        /* Auth */
+        .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
+        .auth-overlay.show { display: flex; }
+        .auth-box { background: #1a1a1a; border-radius: 24px; padding: 30px; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
+        .auth-box h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+        .auth-box .subtitle { color: #888; margin-bottom: 24px; font-size: 0.9rem; }
+        .auth-box input { width: 100%; padding: 12px 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; transition: all 0.3s ease; font-family: inherit; }
+        .auth-box input:focus { outline: none; border-color: #ff6b6b; background: rgba(255,255,255,0.06); }
+        .auth-box input::placeholder { color: #555; }
+        .auth-box .btn-primary { width: 100%; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 6px; position: relative; }
+        .auth-box .btn-primary:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .auth-box .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        .auth-box .auth-toggle { text-align: center; margin-top: 16px; color: #888; font-size: 0.9rem; }
+        .auth-box .auth-toggle a { color: #ff6b6b; text-decoration: none; font-weight: 600; cursor: pointer; }
+        .auth-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.3rem; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; transition: all 0.3s ease; }
+
+        /* Player */
+        .player-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 99997; padding: 15px; overflow-y: auto; }
+        .player-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
+        .player-container { max-width: 1000px; width: 100%; background: #0a0a0a; border-radius: 16px; overflow: hidden; margin: 10px auto; position: relative; }
+        .player-container video { width: 100%; max-height: 65vh; background: #000; }
+        .player-info { padding: 16px; }
+        .player-info h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+        .player-info .desc { color: #aaa; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.5; }
+        .player-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .player-actions button { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: rgba(255,255,255,0.04); color: #fff; cursor: pointer; transition: all 0.3s ease; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 4px; position: relative; }
+        .player-actions button:hover:not(:disabled) { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+        .player-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .close-player { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; z-index: 10; }
+        .close-player:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
+        .comments-section { margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
+        .comments-section h3 { font-size: 0.95rem; margin-bottom: 10px; }
+        .comment { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; margin-bottom: 6px; }
+        .comment .username { font-weight: 600; color: #ff6b6b; margin-bottom: 2px; font-size: 0.85rem; }
+        .comment .text { color: #ccc; font-size: 0.85rem; }
+        .comment .time { color: #666; font-size: 0.7rem; margin-top: 2px; }
+        .add-comment { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+        .add-comment .comment-input-wrapper { flex: 1; min-width: 100px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .add-comment .comment-input-wrapper input { flex: 1; min-width: 80px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.85rem; }
+        .add-comment .comment-input-wrapper input:focus { outline: none; border-color: #ff6b6b; }
+        .add-comment .comment-input-wrapper input::placeholder { color: #555; }
+        .add-comment .comment-name-input { min-width: 100px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.85rem; flex: 0 0 auto; }
+        .add-comment .comment-name-input:focus { outline: none; border-color: #ff6b6b; }
+        .add-comment .comment-name-input::placeholder { color: #555; }
+        .add-comment .btn-post { padding: 8px 16px; border: none; border-radius: 50px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; font-size: 0.85rem; flex: 0 0 auto; position: relative; }
+        .add-comment .btn-post:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .add-comment .btn-post:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        /* Edit Modal */
+        .edit-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 999999; justify-content: center; align-items: center; padding: 20px; }
+        .edit-modal.show { display: flex; }
+        .edit-modal .modal-box { background: #1a1a1a; border-radius: 24px; padding: 24px; max-width: 450px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); }
+        .edit-modal .modal-box h2 { font-size: 1.4rem; margin-bottom: 4px; }
+        .edit-modal .modal-box .sub { color: #888; margin-bottom: 16px; font-size: 0.9rem; }
+        .edit-modal .modal-box input, .edit-modal .modal-box textarea { width: 100%; padding: 12px 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; font-family: inherit; }
+        .edit-modal .modal-box textarea { min-height: 80px; resize: vertical; }
+        .edit-modal .modal-box input:focus, .edit-modal .modal-box textarea:focus { outline: none; border-color: #ff6b6b; }
+        .edit-modal .modal-box .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .edit-modal .modal-box .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; position: relative; }
+        .edit-modal .modal-box .modal-actions .btn-save { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; }
+        .edit-modal .modal-box .modal-actions .btn-save:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .edit-modal .modal-box .modal-actions .btn-cancel { background: rgba(255,255,255,0.05); color: #888; }
+        .edit-modal .modal-box .modal-actions .btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .edit-modal .modal-box .modal-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .footer { background: #0a0a0a; padding: 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.03); margin-top: 40px; }
+        .footer p { color: #666; font-size: 0.8rem; }
+        .footer .social { display: flex; justify-content: center; gap: 16px; margin-top: 8px; }
+        .footer .social a { color: #555; font-size: 1.2rem; transition: all 0.3s ease; }
+        .footer .social a:hover { color: #ff6b6b; transform: translateY(-3px); }
+
         @media (max-width: 768px) {
             .scrolling-bar { padding: 4px 0; }
             .scrolling-text { font-size: 0.65rem; }
@@ -97,6 +267,35 @@
             .video-thumbnail { height: 160px; }
             .full-page .page-header { padding-top: 70px; }
             .full-page .page-title { font-size: 1.1rem; }
+            .admin-sections { grid-template-columns: 1fr; }
+            .admin-stats-grid { grid-template-columns: 1fr 1fr; }
+            .admin-section { max-height: 350px; }
+            .join-container, .subscription-container { padding: 16px; margin: 10px; }
+            .upload-container { padding: 16px; margin: 10px; }
+            .auth-box { padding: 20px; margin: 10px; }
+            .player-container { margin: 10px 0; }
+            .player-info { padding: 12px; }
+            .add-comment { flex-direction: column; align-items: stretch; }
+            .add-comment .comment-input-wrapper { flex-direction: column; width: 100%; }
+            .add-comment .comment-input-wrapper input { width: 100%; }
+            .add-comment .comment-name-input { width: 100%; }
+            .add-comment .btn-post { width: 100%; }
+            .edit-modal .modal-box { padding: 20px; margin: 10px; }
+            .edit-modal .modal-box .modal-actions { flex-direction: column; }
+            .list-item { flex-direction: column; align-items: flex-start; }
+            .list-item .actions { width: 100%; }
+            .list-item .actions button { flex: 1; }
+            .subscription-plans { grid-template-columns: 1fr 1fr; }
+            .bank-details p { flex-direction: column; gap: 2px; }
+        }
+
+        @media (max-width: 480px) {
+            .admin-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .admin-stat-card { padding: 12px; }
+            .admin-stat-card .number { font-size: 1.4rem; }
+            .admin-stat-card .label { font-size: 0.7rem; }
+            .admin-stat-card .icon { font-size: 1.2rem; }
+            .subscription-plans { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -140,27 +339,27 @@
                 <span class="page-title"><i class="fas fa-upload" style="color:#ff6b6b;"></i> Upload Video</span>
                 <span id="subscriptionStatus" class="subscription-badge"></span>
             </div>
-            <div class="upload-container" style="max-width:550px;margin:0 auto;background:#1a1a1a;padding:24px;border-radius:24px;border:1px solid rgba(255,255,255,0.05);">
-                <input type="text" id="uploadTitle" placeholder="Video Title *" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                <textarea id="uploadDesc" placeholder="Video Description" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
-                <div class="file-input" id="videoFileInput" onclick="document.getElementById('videoFile').click()" style="padding:20px 16px;border:2px dashed rgba(255,255,255,0.08);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.3s ease;margin-bottom:10px;background:rgba(255,255,255,0.02);">
-                    <div class="icon" style="font-size:2rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-film"></i></div>
-                    <p style="color:#aaa;font-size:0.9rem;">Click to select video file</p>
-                    <small style="color:#666;font-size:0.75rem;">MP4, AVI, MOV, MKV (Max 500MB)</small>
-                    <div class="file-name" id="videoFileName" style="color:#00b894;margin-top:4px;font-weight:500;display:none;"></div>
+            <div class="upload-container">
+                <input type="text" id="uploadTitle" placeholder="Video Title *">
+                <textarea id="uploadDesc" placeholder="Video Description"></textarea>
+                <div class="file-input" id="videoFileInput" onclick="document.getElementById('videoFile').click()">
+                    <div class="icon"><i class="fas fa-film"></i></div>
+                    <p>Click to select video file</p>
+                    <small>MP4, AVI, MOV, MKV (Max 500MB)</small>
+                    <div class="file-name" id="videoFileName"></div>
                 </div>
                 <input type="file" id="videoFile" accept="video/*" style="display:none" onchange="handleVideoFile()">
-                <div class="file-input" id="thumbnailFileInput" onclick="document.getElementById('thumbnailFile').click()" style="padding:20px 16px;border:2px dashed rgba(255,255,255,0.08);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.3s ease;margin-bottom:10px;background:rgba(255,255,255,0.02);">
-                    <div class="icon" style="font-size:2rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-image"></i></div>
-                    <p style="color:#aaa;font-size:0.9rem;">Click to select thumbnail (optional)</p>
-                    <small style="color:#666;font-size:0.75rem;">JPG, PNG, GIF (1280x720)</small>
-                    <div class="file-name" id="thumbnailFileName" style="color:#00b894;margin-top:4px;font-weight:500;display:none;"></div>
+                <div class="file-input" id="thumbnailFileInput" onclick="document.getElementById('thumbnailFile').click()">
+                    <div class="icon"><i class="fas fa-image"></i></div>
+                    <p>Click to select thumbnail (optional)</p>
+                    <small>JPG, PNG, GIF (1280x720)</small>
+                    <div class="file-name" id="thumbnailFileName"></div>
                 </div>
                 <input type="file" id="thumbnailFile" accept="image/*" style="display:none" onchange="handleThumbnailFile()">
-                <button class="btn-upload" id="uploadBtn" onclick="uploadVideo()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s ease;margin-top:10px;position:relative;"><i class="fas fa-upload"></i> <span class="btn-text">Upload Video</span></button>
-                <div class="progress-container" id="progressContainer" style="display:none;margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:12px;">
-                    <div class="progress-text" id="progressText" style="color:#888;font-size:0.85rem;margin-top:4px;">Uploading... 0%</div>
-                    <div class="progress-bar" style="width:100%;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-top:6px;"><div class="fill" id="progressFill" style="height:100%;background:linear-gradient(90deg,#ff6b6b,#ee5a24);width:0%;transition:width 0.3s ease;"></div></div>
+                <button class="btn-upload" id="uploadBtn" onclick="uploadVideo()"><i class="fas fa-upload"></i> <span class="btn-text">Upload Video</span></button>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-text" id="progressText">Uploading... 0%</div>
+                    <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
                 </div>
             </div>
         </div>
@@ -171,7 +370,7 @@
                 <span class="page-title"><i class="fas fa-video" style="color:#ff6b6b;"></i> My Videos</span>
                 <span id="myVideosSubscriptionStatus" class="subscription-badge"></span>
             </div>
-            <div id="myVideosGrid" class="my-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:16px;"></div>
+            <div id="myVideosGrid" class="my-videos-grid"></div>
         </div>
 
         <div id="adminPage" class="full-page">
@@ -179,29 +378,29 @@
                 <button class="back-btn" onclick="showHome()"><i class="fas fa-arrow-left"></i> Back</button>
                 <span class="page-title"><i class="fas fa-crown" style="color:#ff6b6b;"></i> Admin Dashboard</span>
             </div>
-            <div class="admin-container" style="padding:15px 0;max-width:1400px;margin:0 auto;">
-                <div class="admin-stats-grid" id="adminStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;"></div>
-                <div class="admin-sections" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-                    <div class="admin-section" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);max-height:400px;overflow-y:auto;">
-                        <h3 style="font-size:0.95rem;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:6px;position:sticky;top:0;background:#1a1a1a;padding-bottom:6px;z-index:1;"><i class="fas fa-users" style="color:#ff6b6b;"></i> Join Requests</h3>
+            <div class="admin-container">
+                <div class="admin-stats-grid" id="adminStats"></div>
+                <div class="admin-sections">
+                    <div class="admin-section">
+                        <h3><i class="fas fa-users"></i> Join Requests</h3>
                         <div id="joinRequestsList"></div>
                     </div>
-                    <div class="admin-section" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);max-height:400px;overflow-y:auto;">
-                        <h3 style="font-size:0.95rem;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:6px;position:sticky;top:0;background:#1a1a1a;padding-bottom:6px;z-index:1;"><i class="fas fa-user-check" style="color:#ff6b6b;"></i> Users</h3>
+                    <div class="admin-section">
+                        <h3><i class="fas fa-user-check"></i> Recent Users</h3>
                         <div id="usersList"></div>
                     </div>
                 </div>
-                <div class="admin-section" style="max-height:none;background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);">
-                    <h3 style="font-size:0.95rem;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:6px;position:sticky;top:0;background:#1a1a1a;padding-bottom:6px;z-index:1;"><i class="fas fa-users" style="color:#ff6b6b;"></i> All Users with Subscription</h3>
+                <div class="admin-section" style="max-height:none;margin-top:16px;">
+                    <h3><i class="fas fa-users"></i> All Users with Subscription</h3>
                     <div id="allUsersList"></div>
                 </div>
-                <div class="admin-section" style="max-height:none;margin-top:16px;background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);">
-                    <h3 style="font-size:0.95rem;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:6px;position:sticky;top:0;background:#1a1a1a;padding-bottom:6px;z-index:1;"><i class="fas fa-university" style="color:#ff6b6b;"></i> Update Bank Details</h3>
-                    <input type="text" id="bankName" placeholder="Bank Name" value="Equity Bank" style="width:100%;padding:10px 14px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <input type="text" id="bankAccount" placeholder="Account Number" value="1234567890" style="width:100%;padding:10px 14px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <input type="text" id="bankOwner" placeholder="Account Owner" value="BuTube Platform" style="width:100%;padding:10px 14px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <input type="text" id="bankPhone" placeholder="Phone Number" value="+250 788 888 888" style="width:100%;padding:10px 14px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <button class="btn-primary" id="updateBankBtn" onclick="updateBankDetails()" style="padding:12px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-weight:600;cursor:pointer;transition:all 0.3s ease;width:100%;position:relative;"><i class="fas fa-save"></i> <span class="btn-text">Update Bank Details</span></button>
+                <div class="admin-section" style="max-height:none;margin-top:16px;">
+                    <h3><i class="fas fa-university"></i> Update Bank Details</h3>
+                    <input type="text" id="bankName" placeholder="Bank Name" value="Equity Bank">
+                    <input type="text" id="bankAccount" placeholder="Account Number" value="1234567890">
+                    <input type="text" id="bankOwner" placeholder="Account Owner" value="BuTube Platform">
+                    <input type="text" id="bankPhone" placeholder="Phone Number" value="+250 788 888 888">
+                    <button class="btn-primary" id="updateBankBtn" onclick="updateBankDetails()"><i class="fas fa-save"></i> <span class="btn-text">Update Bank Details</span></button>
                 </div>
             </div>
         </div>
@@ -211,25 +410,35 @@
                 <button class="back-btn" onclick="showHome()"><i class="fas fa-arrow-left"></i> Back</button>
                 <span class="page-title"><i class="fas fa-rocket" style="color:#ff6b6b;"></i> Join BuTube</span>
             </div>
-            <div class="join-container" style="max-width:600px;margin:0 auto;background:#1a1a1a;padding:24px;border-radius:24px;border:1px solid rgba(255,255,255,0.05);">
-                <p style="color:#888;margin-bottom:20px;text-align:center;font-size:0.9rem;">Become a creator and start sharing your videos</p>
+            <div class="join-container">
+                <p class="sub">Become a creator and start sharing your videos</p>
+                
+                <!-- Bank Details -->
+                <div class="bank-details" id="bankDetails">
+                    <h3><i class="fas fa-university"></i> Payment Information</h3>
+                    <p><span class="label">Bank:</span> <span class="value" id="displayBankName">Equity Bank</span></p>
+                    <p><span class="label">Account Number:</span> <span class="value" id="displayBankAccount">1234567890</span></p>
+                    <p><span class="label">Account Owner:</span> <span class="value" id="displayBankOwner">BuTube Platform</span></p>
+                    <p><span class="label">Phone:</span> <span class="value" id="displayBankPhone">+250 788 888 888</span></p>
+                </div>
+
                 <div class="join-form">
-                    <input type="text" id="joinFullName" placeholder="Full Name *" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <input type="tel" id="joinPhone" placeholder="Phone Number *" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <input type="email" id="joinEmail" placeholder="Email (optional)" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-                    <select id="joinPlan" style="width:100%;padding:10px 14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
+                    <input type="text" id="joinFullName" placeholder="Full Name *">
+                    <input type="tel" id="joinPhone" placeholder="Phone Number *">
+                    <input type="email" id="joinEmail" placeholder="Email (optional)">
+                    <select id="joinPlan">
                         <option value="monthly">Monthly - $10/month</option>
                         <option value="quarterly">Quarterly - $25/quarter</option>
                         <option value="semiannual">Semi-Annual - $45/6 months</option>
                         <option value="yearly">Yearly - $80/year</option>
                     </select>
-                    <div class="file-input" onclick="document.getElementById('joinProof').click()" style="border:2px dashed rgba(255,255,255,0.08);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;background:rgba(255,255,255,0.02);">
+                    <div class="file-input" onclick="document.getElementById('joinProof').click()" style="border:2px dashed rgba(255,255,255,0.08);border-radius:12px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;background:rgba(255,255,255,0.02);">
                         <i class="fas fa-receipt" style="font-size:1.5rem;color:#ff6b6b;"></i>
                         <p style="color:#aaa;font-size:0.9rem;margin-top:4px;">Upload payment proof (optional)</p>
                         <div id="joinProofName" style="color:#00b894;font-size:0.85rem;margin-top:4px;"></div>
                     </div>
                     <input type="file" id="joinProof" accept="image/*" style="display:none" onchange="handleJoinProof()">
-                    <button class="btn-submit-join" id="joinBtn" onclick="submitJoinRequest()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s ease;margin-top:10px;position:relative;"><i class="fas fa-paper-plane"></i> <span class="btn-text">Submit Request</span></button>
+                    <button class="btn-submit-join" id="joinBtn" onclick="submitJoinRequest()"><i class="fas fa-paper-plane"></i> <span class="btn-text">Submit Request</span></button>
                 </div>
             </div>
         </div>
@@ -239,76 +448,85 @@
                 <button class="back-btn" onclick="showHome()"><i class="fas fa-arrow-left"></i> Back</button>
                 <span class="page-title"><i class="fas fa-crown" style="color:#ff6b6b;"></i> Subscription Plans</span>
             </div>
-            <div class="subscription-container" style="max-width:600px;margin:0 auto;background:#1a1a1a;padding:24px;border-radius:24px;border:1px solid rgba(255,255,255,0.05);">
-                <p style="color:#888;margin-bottom:20px;text-align:center;font-size:0.9rem;">Choose a plan that works for you</p>
-                <div class="subscription-plans" id="subscriptionPlans" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0;">
-                    <div class="plan-card" data-plan="monthly" onclick="selectPlan('monthly')" style="background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.05);border-radius:16px;padding:16px 12px;text-align:center;transition:all 0.3s ease;cursor:pointer;">
-                        <h4 style="font-size:0.95rem;margin-bottom:4px;">Monthly</h4>
-                        <div class="price" style="font-size:1.5rem;font-weight:800;color:#ff6b6b;">$10</div>
-                        <div class="duration" style="color:#888;font-size:0.75rem;margin-bottom:8px;">30 days</div>
+            <div class="subscription-container">
+                <p class="sub">Choose a plan that works for you</p>
+                
+                <div class="bank-details" id="subscriptionBankDetails">
+                    <h3><i class="fas fa-university"></i> Payment Information</h3>
+                    <p><span class="label">Bank:</span> <span class="value" id="subBankName">Equity Bank</span></p>
+                    <p><span class="label">Account Number:</span> <span class="value" id="subBankAccount">1234567890</span></p>
+                    <p><span class="label">Account Owner:</span> <span class="value" id="subBankOwner">BuTube Platform</span></p>
+                    <p><span class="label">Phone:</span> <span class="value" id="subBankPhone">+250 788 888 888</span></p>
+                </div>
+
+                <div class="subscription-plans" id="subscriptionPlans">
+                    <div class="plan-card" data-plan="monthly" onclick="selectPlan('monthly')">
+                        <h4>Monthly</h4>
+                        <div class="price">$10</div>
+                        <div class="duration">30 days</div>
                     </div>
-                    <div class="plan-card" data-plan="quarterly" onclick="selectPlan('quarterly')" style="background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.05);border-radius:16px;padding:16px 12px;text-align:center;transition:all 0.3s ease;cursor:pointer;">
-                        <h4 style="font-size:0.95rem;margin-bottom:4px;">Quarterly</h4>
-                        <div class="price" style="font-size:1.5rem;font-weight:800;color:#ff6b6b;">$25</div>
-                        <div class="duration" style="color:#888;font-size:0.75rem;margin-bottom:8px;">90 days</div>
+                    <div class="plan-card" data-plan="quarterly" onclick="selectPlan('quarterly')">
+                        <h4>Quarterly</h4>
+                        <div class="price">$25</div>
+                        <div class="duration">90 days</div>
                     </div>
-                    <div class="plan-card" data-plan="semiannual" onclick="selectPlan('semiannual')" style="background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.05);border-radius:16px;padding:16px 12px;text-align:center;transition:all 0.3s ease;cursor:pointer;">
-                        <h4 style="font-size:0.95rem;margin-bottom:4px;">Semi-Annual</h4>
-                        <div class="price" style="font-size:1.5rem;font-weight:800;color:#ff6b6b;">$45</div>
-                        <div class="duration" style="color:#888;font-size:0.75rem;margin-bottom:8px;">180 days</div>
+                    <div class="plan-card" data-plan="semiannual" onclick="selectPlan('semiannual')">
+                        <h4>Semi-Annual</h4>
+                        <div class="price">$45</div>
+                        <div class="duration">180 days</div>
                     </div>
-                    <div class="plan-card" data-plan="yearly" onclick="selectPlan('yearly')" style="background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.05);border-radius:16px;padding:16px 12px;text-align:center;transition:all 0.3s ease;cursor:pointer;">
-                        <h4 style="font-size:0.95rem;margin-bottom:4px;">Yearly</h4>
-                        <div class="price" style="font-size:1.5rem;font-weight:800;color:#ff6b6b;">$80</div>
-                        <div class="duration" style="color:#888;font-size:0.75rem;margin-bottom:8px;">365 days</div>
+                    <div class="plan-card" data-plan="yearly" onclick="selectPlan('yearly')">
+                        <h4>Yearly</h4>
+                        <div class="price">$80</div>
+                        <div class="duration">365 days</div>
                     </div>
                 </div>
-                <button class="btn-subscribe" id="subscribeBtn" onclick="subscribeToPlan()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s ease;margin-top:10px;position:relative;"><i class="fas fa-crown"></i> <span class="btn-text">Subscribe Now</span></button>
+                <button class="btn-subscribe" id="subscribeBtn" onclick="subscribeToPlan()"><i class="fas fa-crown"></i> <span class="btn-text">Subscribe Now</span></button>
             </div>
         </div>
     </div>
 
-    <div class="auth-overlay" id="authOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(20px);z-index:99999;justify-content:center;align-items:center;padding:20px;">
-        <div class="auth-box" style="background:#1a1a1a;border-radius:24px;padding:30px;max-width:400px;width:100%;border:1px solid rgba(255,255,255,0.05);box-shadow:0 40px 80px rgba(0,0,0,0.8);max-height:90vh;overflow-y:auto;position:relative;">
-            <button class="auth-close" onclick="closeAuth()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.05);border:none;color:#fff;font-size:1.3rem;cursor:pointer;width:36px;height:36px;border-radius:50%;transition:all 0.3s ease;"><i class="fas fa-times"></i></button>
-            <h2 id="authTitle" style="font-size:1.6rem;font-weight:800;margin-bottom:6px;">Welcome Back</h2>
-            <p class="subtitle" id="authSubtitle" style="color:#888;margin-bottom:24px;font-size:0.9rem;">Login to continue</p>
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box">
+            <button class="auth-close" onclick="closeAuth()"><i class="fas fa-times"></i></button>
+            <h2 id="authTitle">Welcome Back</h2>
+            <p class="subtitle" id="authSubtitle">Login to continue</p>
             <div id="authForm">
-                <input type="text" id="authUsername" placeholder="Username *" style="width:100%;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;transition:all 0.3s ease;font-family:inherit;">
-                <input type="password" id="authPassword" placeholder="Password *" style="width:100%;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;transition:all 0.3s ease;font-family:inherit;">
+                <input type="text" id="authUsername" placeholder="Username *">
+                <input type="password" id="authPassword" placeholder="Password *">
                 <div id="authExtra">
-                    <input type="password" id="authSecret" placeholder="Secret Code *" style="width:100%;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;transition:all 0.3s ease;font-family:inherit;">
+                    <input type="password" id="authSecret" placeholder="Secret Code *">
                 </div>
-                <button class="btn-primary" id="authBtn" onclick="handleAuth()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s ease;margin-top:6px;position:relative;"><i class="fas fa-sign-in-alt"></i> <span class="btn-text">Login</span></button>
+                <button class="btn-primary" id="authBtn" onclick="handleAuth()"><i class="fas fa-sign-in-alt"></i> <span class="btn-text">Login</span></button>
             </div>
-            <div class="auth-toggle" style="text-align:center;margin-top:16px;color:#888;font-size:0.9rem;">
+            <div class="auth-toggle">
                 <span id="authToggleText">Don't have an account?</span>
-                <a id="authToggleLink" onclick="toggleAuth()" style="color:#ff6b6b;text-decoration:none;font-weight:600;cursor:pointer;">Register</a>
+                <a id="authToggleLink" onclick="toggleAuth()">Register</a>
             </div>
         </div>
     </div>
 
-    <div class="player-overlay" id="playerOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:99997;padding:15px;overflow-y:auto;">
-        <div class="player-container" style="max-width:1000px;width:100%;background:#0a0a0a;border-radius:16px;overflow:hidden;margin:10px auto;position:relative;">
-            <button class="close-player" onclick="closePlayer()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:1.5rem;cursor:pointer;width:40px;height:40px;border-radius:50%;transition:all 0.3s ease;z-index:10;"><i class="fas fa-times"></i></button>
-            <video id="playerVideo" controls autoplay style="width:100%;max-height:65vh;background:#000;"></video>
-            <div class="player-info" style="padding:16px;">
-                <h2 id="playerTitle" style="font-size:1.2rem;font-weight:700;margin-bottom:4px;"></h2>
-                <p class="desc" id="playerDesc" style="color:#aaa;margin-bottom:12px;font-size:0.9rem;line-height:1.5;"></p>
-                <div class="player-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                    <button id="likeBtn" onclick="likeVideo()" style="padding:6px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:rgba(255,255,255,0.04);color:#fff;cursor:pointer;transition:all 0.3s ease;font-size:0.8rem;font-weight:500;display:flex;align-items:center;gap:4px;position:relative;"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
-                    <button id="dislikeBtn" onclick="dislikeVideo()" style="padding:6px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:rgba(255,255,255,0.04);color:#fff;cursor:pointer;transition:all 0.3s ease;font-size:0.8rem;font-weight:500;display:flex;align-items:center;gap:4px;position:relative;"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
-                    <button id="shareBtn" onclick="shareVideo()" style="padding:6px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:rgba(255,255,255,0.04);color:#fff;cursor:pointer;transition:all 0.3s ease;font-size:0.8rem;font-weight:500;display:flex;align-items:center;gap:4px;position:relative;"><i class="fas fa-share"></i> <span id="shareCount">0</span></button>
-                    <span style="color:#888;font-size:0.8rem;display:flex;align-items:center;gap:4px;"><i class="fas fa-eye"></i> <span id="viewCount">0</span></span>
+    <div class="player-overlay" id="playerOverlay">
+        <div class="player-container">
+            <button class="close-player" onclick="closePlayer()"><i class="fas fa-times"></i></button>
+            <video id="playerVideo" controls autoplay></video>
+            <div class="player-info">
+                <h2 id="playerTitle"></h2>
+                <p class="desc" id="playerDesc"></p>
+                <div class="player-actions">
+                    <button id="likeBtn" onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
+                    <button id="dislikeBtn" onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
+                    <button id="shareBtn" onclick="shareVideo()"><i class="fas fa-share"></i> <span id="shareCount">0</span></button>
+                    <span style="color:#888;"><i class="fas fa-eye"></i> <span id="viewCount">0</span></span>
                 </div>
-                <div class="comments-section" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:12px;">
-                    <h3 style="font-size:0.95rem;margin-bottom:10px;"><i class="fas fa-comments"></i> Comments</h3>
+                <div class="comments-section">
+                    <h3><i class="fas fa-comments"></i> Comments</h3>
                     <div id="commentsList"></div>
-                    <div class="add-comment" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center;">
-                        <input class="comment-name-input" id="commentName" placeholder="Your name *" style="min-width:100px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.85rem;flex:0 0 auto;">
-                        <div class="comment-input-wrapper" style="flex:1;min-width:100px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                            <input id="commentText" placeholder="Write a comment..." style="flex:1;min-width:80px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.85rem;">
-                            <button class="btn-post" id="commentBtn" onclick="postComment()" style="padding:8px 16px;border:none;border-radius:50px;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;font-weight:600;cursor:pointer;transition:all 0.3s ease;white-space:nowrap;font-size:0.85rem;flex:0 0 auto;position:relative;"><i class="fas fa-paper-plane"></i> <span class="btn-text">Post</span></button>
+                    <div class="add-comment">
+                        <input class="comment-name-input" id="commentName" placeholder="Your name *">
+                        <div class="comment-input-wrapper">
+                            <input id="commentText" placeholder="Write a comment...">
+                            <button class="btn-post" id="commentBtn" onclick="postComment()"><i class="fas fa-paper-plane"></i> <span class="btn-text">Post</span></button>
                         </div>
                     </div>
                 </div>
@@ -316,27 +534,33 @@
         </div>
     </div>
 
-    <div class="edit-modal" id="editModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(20px);z-index:999999;justify-content:center;align-items:center;padding:20px;">
-        <div class="modal-box" style="background:#1a1a1a;border-radius:24px;padding:24px;max-width:450px;width:100%;border:1px solid rgba(255,255,255,0.05);box-shadow:0 40px 80px rgba(0,0,0,0.8);">
-            <h2 style="font-size:1.4rem;margin-bottom:4px;">Edit Video</h2>
-            <p class="sub" style="color:#888;margin-bottom:16px;font-size:0.9rem;">Update your video details</p>
-            <input type="text" id="editVideoTitle" placeholder="Title" style="width:100%;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;">
-            <textarea id="editVideoDesc" placeholder="Description" style="width:100%;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.95rem;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
+    <div class="edit-modal" id="editModal">
+        <div class="modal-box">
+            <h2>Edit Video</h2>
+            <p class="sub">Update your video details</p>
+            <input type="text" id="editVideoTitle" placeholder="Title">
+            <textarea id="editVideoDesc" placeholder="Description"></textarea>
             <input type="hidden" id="editVideoId">
-            <div class="modal-actions" style="display:flex;gap:10px;margin-top:10px;">
-                <button class="btn-save" id="editSaveBtn" onclick="saveEdit()" style="flex:1;padding:12px;border:none;border-radius:12px;font-weight:600;cursor:pointer;transition:all 0.3s ease;position:relative;background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;"><i class="fas fa-save"></i> <span class="btn-text">Save</span></button>
-                <button class="btn-cancel" onclick="closeEdit()" style="flex:1;padding:12px;border:none;border-radius:12px;font-weight:600;cursor:pointer;transition:all 0.3s ease;position:relative;background:rgba(255,255,255,0.05);color:#888;"><i class="fas fa-times"></i> Cancel</button>
+            <div class="modal-actions">
+                <button class="btn-save" id="editSaveBtn" onclick="saveEdit()"><i class="fas fa-save"></i> <span class="btn-text">Save</span></button>
+                <button class="btn-cancel" onclick="closeEdit()"><i class="fas fa-times"></i> Cancel</button>
             </div>
         </div>
     </div>
 
-    <div class="toast" id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;padding:12px 24px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);box-shadow:0 20px 60px rgba(0,0,0,0.8);z-index:999999;display:none;align-items:center;gap:10px;font-weight:500;max-width:90%;font-size:0.85rem;">
+    <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMessage">Success!</span>
     </div>
 
-    <div class="footer" style="background:#0a0a0a;padding:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.03);margin-top:40px;">
-        <p style="color:#666;font-size:0.8rem;">&copy; 2024 BuTube - Share, Watch, Connect. All rights reserved.</p>
+    <div class="footer">
+        <p>&copy; 2026 BuTube - Share, Watch, Connect. All rights reserved.</p>
+        <div class="social">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
     </div>
 
     <script>
@@ -404,11 +628,11 @@
                 toggleText.textContent = "Already have an account?";
                 toggleLink.textContent = 'Login';
             }
-            overlay.style.display = 'flex';
+            overlay.classList.add('show');
         }
 
         function closeAuth() {
-            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('authOverlay').classList.remove('show');
         }
 
         function toggleAuth() {
@@ -476,7 +700,6 @@
             document.getElementById('navAdmin').classList.toggle('hidden', !isLoggedIn || !currentUser || currentUser.role !== 'super_admin');
             document.getElementById('navJoin').classList.toggle('hidden', isLoggedIn);
 
-            // Update subscription badge
             if (currentUser && currentUser.days_remaining !== undefined) {
                 const badge = document.getElementById('subscriptionStatus');
                 const myVideosBadge = document.getElementById('myVideosSubscriptionStatus');
@@ -557,11 +780,36 @@
             try {
                 const data = await apiFetch(API + '/payment-settings');
                 if (data && data.length > 0) {
-                    bankDetails = data[0];
+                    const bank = data[0];
+                    bankDetails = {
+                        bankName: bank.bank_name || 'Equity Bank',
+                        accountNumber: bank.account_number || '1234567890',
+                        accountOwner: bank.account_owner || 'BuTube Platform',
+                        phoneNumber: bank.phone_number || '+250 788 888 888'
+                    };
+                    updateBankDisplay();
                 }
             } catch (error) {
                 // Use defaults
+                updateBankDisplay();
             }
+        }
+
+        function updateBankDisplay() {
+            document.getElementById('displayBankName').textContent = bankDetails.bankName || 'Equity Bank';
+            document.getElementById('displayBankAccount').textContent = bankDetails.accountNumber || '1234567890';
+            document.getElementById('displayBankOwner').textContent = bankDetails.accountOwner || 'BuTube Platform';
+            document.getElementById('displayBankPhone').textContent = bankDetails.phoneNumber || '+250 788 888 888';
+
+            document.getElementById('subBankName').textContent = bankDetails.bankName || 'Equity Bank';
+            document.getElementById('subBankAccount').textContent = bankDetails.accountNumber || '1234567890';
+            document.getElementById('subBankOwner').textContent = bankDetails.accountOwner || 'BuTube Platform';
+            document.getElementById('subBankPhone').textContent = bankDetails.phoneNumber || '+250 788 888 888';
+
+            document.getElementById('bankName').value = bankDetails.bankName || 'Equity Bank';
+            document.getElementById('bankAccount').value = bankDetails.accountNumber || '1234567890';
+            document.getElementById('bankOwner').value = bankDetails.accountOwner || 'BuTube Platform';
+            document.getElementById('bankPhone').value = bankDetails.phoneNumber || '+250 788 888 888';
         }
 
         async function updateBankDetails() {
@@ -582,6 +830,13 @@
                     body: JSON.stringify(bankData)
                 });
 
+                bankDetails = {
+                    bankName: bankData.bankName,
+                    accountNumber: bankData.accountNumber,
+                    accountOwner: bankData.accountOwner,
+                    phoneNumber: bankData.phoneNumber
+                };
+                updateBankDisplay();
                 showToast('Bank details updated successfully!');
             } catch (error) {
                 showToast('Failed to update bank details: ' + error.message, 'error');
@@ -652,7 +907,7 @@
         async function openVideo(id) {
             currentVideoId = id;
             const overlay = document.getElementById('playerOverlay');
-            overlay.style.display = 'flex';
+            overlay.classList.add('show');
 
             try {
                 const data = await apiFetch(API + '/videos/' + id);
@@ -670,10 +925,10 @@
                 const commentsList = document.getElementById('commentsList');
                 if (data.comments && data.comments.length > 0) {
                     commentsList.innerHTML = data.comments.map(c => `
-                        <div class="comment" style="background:rgba(255,255,255,0.03);padding:10px;border-radius:12px;margin-bottom:6px;">
-                            <div class="username" style="font-weight:600;color:#ff6b6b;margin-bottom:2px;font-size:0.85rem;">${c.username}</div>
-                            <div class="text" style="color:#ccc;font-size:0.85rem;">${c.comment}</div>
-                            <div class="time" style="color:#666;font-size:0.7rem;margin-top:2px;">${new Date(c.created_at).toLocaleString()}</div>
+                        <div class="comment">
+                            <div class="username">${c.username}</div>
+                            <div class="text">${c.comment}</div>
+                            <div class="time">${new Date(c.created_at).toLocaleString()}</div>
                         </div>
                     `).join('');
                 } else {
@@ -685,7 +940,7 @@
         }
 
         function closePlayer() {
-            document.getElementById('playerOverlay').style.display = 'none';
+            document.getElementById('playerOverlay').classList.remove('show');
             const video = document.getElementById('playerVideo');
             video.pause();
             video.src = '';
@@ -783,11 +1038,10 @@
                 const commentsList = document.getElementById('commentsList');
                 const newComment = document.createElement('div');
                 newComment.className = 'comment';
-                newComment.style.cssText = 'background:rgba(255,255,255,0.03);padding:10px;border-radius:12px;margin-bottom:6px;';
                 newComment.innerHTML = `
-                    <div class="username" style="font-weight:600;color:#ff6b6b;margin-bottom:2px;font-size:0.85rem;">${data.comment.username}</div>
-                    <div class="text" style="color:#ccc;font-size:0.85rem;">${data.comment.comment}</div>
-                    <div class="time" style="color:#666;font-size:0.7rem;margin-top:2px;">${new Date(data.comment.created_at).toLocaleString()}</div>
+                    <div class="username">${data.comment.username}</div>
+                    <div class="text">${data.comment.comment}</div>
+                    <div class="time">${new Date(data.comment.created_at).toLocaleString()}</div>
                 `;
                 commentsList.prepend(newComment);
                 showToast('Comment posted!');
@@ -915,19 +1169,19 @@
                     return;
                 }
                 grid.innerHTML = myVideos.map(v => `
-                    <div class="my-video-card" style="background:#1a1a1a;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.05);transition:all 0.3s ease;">
-                        <img class="thumbnail" src="${API}/videos/${v.id}/thumbnail" alt="${v.title}" onclick="openVideo(${v.id})" style="width:100%;height:140px;object-fit:cover;background:#111;cursor:pointer;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22160%22%3E%3Crect fill=%22%23111%22 width=%22300%22 height=%22160%22/%3E%3Ctext x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2220%22 font-family=%22sans-serif%22%3ENo Thumbnail%3C/text%3E%3C/svg%3E'">
-                        <div class="info" onclick="openVideo(${v.id})" style="padding:12px;cursor:pointer;">
-                            <div class="title" style="font-weight:600;margin-bottom:4px;font-size:0.95rem;">${v.title}</div>
-                            <div class="meta" style="font-size:0.75rem;color:#888;display:flex;gap:10px;flex-wrap:wrap;">
+                    <div class="my-video-card">
+                        <img class="thumbnail" src="${API}/videos/${v.id}/thumbnail" alt="${v.title}" onclick="openVideo(${v.id})" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22160%22%3E%3Crect fill=%22%23111%22 width=%22300%22 height=%22160%22/%3E%3Ctext x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2220%22 font-family=%22sans-serif%22%3ENo Thumbnail%3C/text%3E%3C/svg%3E'">
+                        <div class="info" onclick="openVideo(${v.id})">
+                            <div class="title">${v.title}</div>
+                            <div class="meta">
                                 <span><i class="fas fa-eye"></i> ${v.views || 0}</span>
                                 <span><i class="fas fa-thumbs-up"></i> ${v.likes || 0}</span>
                                 <span>${new Date(v.created_at).toLocaleDateString()}</span>
                             </div>
                         </div>
-                        <div class="card-actions" style="display:flex;gap:6px;padding:8px 12px;border-top:1px solid rgba(255,255,255,0.05);">
-                            <button class="btn-edit" onclick="openEditModal(${v.id}, '${v.title}', '${v.description || ''}')" style="flex:1;padding:6px;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all 0.3s ease;font-size:0.75rem;display:flex;align-items:center;justify-content:center;gap:4px;position:relative;background:rgba(255,165,0,0.2);color:#ffa500;"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-delete" onclick="deleteVideo(${v.id})" style="flex:1;padding:6px;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all 0.3s ease;font-size:0.75rem;display:flex;align-items:center;justify-content:center;gap:4px;position:relative;background:rgba(255,0,0,0.2);color:#ff4444;"><i class="fas fa-trash"></i> Delete</button>
+                        <div class="card-actions">
+                            <button class="btn-edit" onclick="openEditModal(${v.id}, '${v.title}', '${v.description || ''}')"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-delete" onclick="deleteVideo(${v.id})"><i class="fas fa-trash"></i> Delete</button>
                         </div>
                     </div>
                 `).join('');
@@ -940,11 +1194,11 @@
             document.getElementById('editVideoId').value = id;
             document.getElementById('editVideoTitle').value = title;
             document.getElementById('editVideoDesc').value = description;
-            document.getElementById('editModal').style.display = 'flex';
+            document.getElementById('editModal').classList.add('show');
         }
 
         function closeEdit() {
-            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editModal').classList.remove('show');
         }
 
         async function saveEdit() {
@@ -996,35 +1250,35 @@
                 const data = await apiFetch(API + '/admin/super-stats');
                 const stats = data.stats;
                 statsContainer.innerHTML = `
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-users"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#ff6b6b,#ee5a24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.total_users || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Total Users</div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-users"></i></div>
+                        <div class="number">${stats.users.total_users || 0}</div>
+                        <div class="label">Total Users</div>
                     </div>
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-user-check"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#ff6b6b,#ee5a24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.creators || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Creators</div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-user-check"></i></div>
+                        <div class="number">${stats.users.creators || 0}</div>
+                        <div class="label">Creators</div>
                     </div>
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-video"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#ff6b6b,#ee5a24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.videos.total_videos || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Total Videos</div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-video"></i></div>
+                        <div class="number">${stats.videos.total_videos || 0}</div>
+                        <div class="label">Total Videos</div>
                     </div>
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#ff6b6b;margin-bottom:4px;"><i class="fas fa-clock"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#ff6b6b,#ee5a24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.joinRequests.pending_requests || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Pending Requests</div>
+                    <div class="admin-stat-card">
+                        <div class="icon"><i class="fas fa-clock"></i></div>
+                        <div class="number">${stats.joinRequests.pending_requests || 0}</div>
+                        <div class="label">Pending Requests</div>
                     </div>
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#00b894;margin-bottom:4px;"><i class="fas fa-check-circle"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#00b894,#00b894);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.active_subscriptions || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Active Subscriptions</div>
+                    <div class="admin-stat-card">
+                        <div class="icon" style="color:#00b894;"><i class="fas fa-check-circle"></i></div>
+                        <div class="number" style="background:linear-gradient(135deg,#00b894,#00b894);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.active_subscriptions || 0}</div>
+                        <div class="label">Active Subscriptions</div>
                     </div>
-                    <div class="admin-stat-card" style="background:#1a1a1a;padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.05);text-align:center;transition:all 0.3s ease;">
-                        <div class="icon" style="font-size:1.6rem;color:#ff4444;margin-bottom:4px;"><i class="fas fa-exclamation-circle"></i></div>
-                        <div class="number" style="font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#ff4444,#ff4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.expired_subscriptions || 0}</div>
-                        <div class="label" style="color:#888;font-size:0.8rem;margin-top:2px;">Expired Subscriptions</div>
+                    <div class="admin-stat-card">
+                        <div class="icon" style="color:#ff4444;"><i class="fas fa-exclamation-circle"></i></div>
+                        <div class="number" style="background:linear-gradient(135deg,#ff4444,#ff4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${stats.users.expired_subscriptions || 0}</div>
+                        <div class="label">Expired Subscriptions</div>
                     </div>
                 `;
 
@@ -1035,17 +1289,17 @@
                     requestsList.innerHTML = '<p style="color:#666;padding:8px 0;font-size:0.85rem;">No join requests.</p>';
                 } else {
                     requestsList.innerHTML = requests.map(r => `
-                        <div class="list-item" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;color:#aaa;flex-wrap:wrap;gap:4px;">
+                        <div class="list-item">
                             <div>
-                                <div class="name" style="color:#fff;font-weight:500;">${r.full_name}</div>
-                                <div class="meta" style="color:#666;font-size:0.75rem;">${r.phone_number} • ${r.plan}</div>
+                                <div class="name">${r.full_name}</div>
+                                <div class="meta">${r.phone_number} • ${r.plan}</div>
                                 ${r.has_proof ? `<span style="color:#00b894;font-size:0.7rem;"><i class="fas fa-image"></i> Proof uploaded</span>` : ''}
                             </div>
-                            <div class="actions" style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <div class="actions">
                                 ${r.status === 'pending' ? `
-                                    ${r.has_proof ? `<button class="btn-view" onclick="viewProof(${r.id})" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(52,152,219,0.2);color:#3498db;"><i class="fas fa-eye"></i> Proof</button>` : ''}
-                                    <button class="btn-approve" onclick="processJoinRequest(${r.id}, 'approve')" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(0,184,148,0.2);color:#00b894;"><i class="fas fa-check"></i> Approve</button>
-                                    <button class="btn-reject" onclick="processJoinRequest(${r.id}, 'reject')" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(255,0,0,0.2);color:#ff4444;"><i class="fas fa-times"></i> Reject</button>
+                                    ${r.has_proof ? `<button class="btn-view" onclick="viewProof(${r.id})"><i class="fas fa-eye"></i> Proof</button>` : ''}
+                                    <button class="btn-approve" onclick="processJoinRequest(${r.id}, 'approve')"><i class="fas fa-check"></i> Approve</button>
+                                    <button class="btn-reject" onclick="processJoinRequest(${r.id}, 'reject')"><i class="fas fa-times"></i> Reject</button>
                                 ` : `<span style="color:#666;font-size:0.75rem;">${r.status}</span>`}
                             </div>
                         </div>
@@ -1059,14 +1313,14 @@
                     usersList.innerHTML = '<p style="color:#666;padding:8px 0;font-size:0.85rem;">No users found.</p>';
                 } else {
                     usersList.innerHTML = users.map(u => `
-                        <div class="list-item" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;color:#aaa;flex-wrap:wrap;gap:4px;">
+                        <div class="list-item">
                             <div>
-                                <div class="name" style="color:#fff;font-weight:500;">${u.username}</div>
-                                <div class="meta" style="color:#666;font-size:0.75rem;">${u.role} ${u.subscription_end ? `• Ends: ${new Date(u.subscription_end).toLocaleDateString()}` : ''}</div>
+                                <div class="name">${u.username}</div>
+                                <div class="meta">${u.role} ${u.subscription_end ? `• Ends: ${new Date(u.subscription_end).toLocaleDateString()}` : ''}</div>
                             </div>
-                            <div class="actions" style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <div class="actions">
                                 ${u.role !== 'super_admin' ? `
-                                    <button class="btn-delete" onclick="deleteUser(${u.id})" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(255,0,0,0.2);color:#ff4444;"><i class="fas fa-trash"></i> Delete</button>
+                                    <button class="btn-delete" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i> Delete</button>
                                 ` : ''}
                             </div>
                         </div>
@@ -1080,21 +1334,21 @@
                     allUsersList.innerHTML = '<p style="color:#666;padding:8px 0;font-size:0.85rem;">No users found.</p>';
                 } else {
                     allUsersList.innerHTML = allUsers.map(u => `
-                        <div class="list-item" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;color:#aaa;flex-wrap:wrap;gap:4px;">
+                        <div class="list-item">
                             <div>
-                                <div class="name" style="color:#fff;font-weight:500;">${u.username}</div>
-                                <div class="meta" style="color:#666;font-size:0.75rem;">
+                                <div class="name">${u.username}</div>
+                                <div class="meta">
                                     ${u.role} • ${u.days_remaining > 0 ? `✅ ${u.days_remaining} days remaining` : '⚠️ Expired'}
                                     ${u.subscription_end ? `• Ends: ${new Date(u.subscription_end).toLocaleDateString()}` : '• No subscription'}
                                 </div>
                             </div>
-                            <div class="actions" style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <div class="actions">
                                 ${u.role === 'creator' ? `
                                     <input type="number" id="days_${u.id}" placeholder="Days" style="width:60px;padding:2px 4px;border:1px solid rgba(255,255,255,0.08);border-radius:4px;background:rgba(255,255,255,0.04);color:#fff;font-size:0.7rem;">
-                                    <button class="btn-approve" onclick="updateSubscription(${u.id})" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(0,184,148,0.2);color:#00b894;"><i class="fas fa-plus"></i> Add</button>
+                                    <button class="btn-approve" onclick="updateSubscription(${u.id})"><i class="fas fa-plus"></i> Add</button>
                                 ` : ''}
                                 ${u.role !== 'super_admin' ? `
-                                    <button class="btn-delete" onclick="deleteUser(${u.id})" style="padding:3px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.3s ease;position:relative;background:rgba(255,0,0,0.2);color:#ff4444;"><i class="fas fa-trash"></i> Delete</button>
+                                    <button class="btn-delete" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i> Delete</button>
                                 ` : ''}
                             </div>
                         </div>
@@ -1280,7 +1534,7 @@
                     semiannual: 'Semi-Annual',
                     yearly: 'Yearly'
                 };
-                showToast(`✅ You've selected the ${planNames[selectedPlan]} plan (${planDays[selectedPlan]} days)! Please contact support to complete your subscription.`);
+                showToast(`✅ You've selected the ${planNames[selectedPlan]} plan (${planDays[selectedPlan]} days)! Please send payment to the bank details shown above.`);
                 document.getElementById('joinPlan').value = selectedPlan;
                 showJoin();
             } catch (error) {

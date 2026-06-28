@@ -171,7 +171,6 @@ async function ensureAllColumns() {
       ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
       ADD COLUMN IF NOT EXISTS subscription_start DATE,
       ADD COLUMN IF NOT EXISTS subscription_end DATE,
-      ADD COLUMN IF NOT EXISTS subscription_days_remaining INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS subscription_proof_image BYTEA,
       ADD COLUMN IF NOT EXISTS subscription_proof_mimetype VARCHAR(100),
       ADD COLUMN IF NOT EXISTS subscription_proof_uploaded_at TIMESTAMP,
@@ -417,7 +416,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
       `SELECT id, username, role, subscription_end,
               CASE 
                 WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
-                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
+                THEN (subscription_end - CURRENT_DATE)
                 ELSE 0 
               END as days_remaining
        FROM users WHERE id = $1`,
@@ -522,7 +521,7 @@ app.post('/api/auth/login', async (req, res) => {
       `SELECT id, username, password, role, subscription_end,
               CASE 
                 WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
-                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
+                THEN (subscription_end - CURRENT_DATE)
                 ELSE 0 
               END as days_remaining
        FROM users WHERE username = $1`,
@@ -816,10 +815,10 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     `);
 
     const allUsers = await pool.query(`
-      SELECT id, username, role, subscription_end, 
+      SELECT id, username, role, subscription_end,
              CASE 
                WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
-               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
+               THEN (subscription_end - CURRENT_DATE)
                ELSE 0 
              END as days_remaining
       FROM users 
@@ -874,7 +873,7 @@ app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, 
              subscription_end,
              CASE 
                WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
-               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
+               THEN (subscription_end - CURRENT_DATE)
                ELSE 0 
              END as days_remaining
       FROM users 
@@ -961,19 +960,24 @@ app.post('/api/payment-settings', authenticate, authorize('super_admin'), async 
   try {
     const { bankName, accountNumber, accountOwner, phoneNumber } = req.body;
     
-    // Update or insert
-    await pool.query(
-      `INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number, updated_by, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-       ON CONFLICT (id) DO UPDATE SET 
-         bank_name = EXCLUDED.bank_name,
-         account_number = EXCLUDED.account_number,
-         account_owner = EXCLUDED.account_owner,
-         phone_number = EXCLUDED.phone_number,
-         updated_by = EXCLUDED.updated_by,
-         updated_at = EXCLUDED.updated_at`,
-      [bankName, accountNumber, accountOwner, phoneNumber, req.user.id]
-    );
+    // Check if exists
+    const check = await pool.query('SELECT id FROM payment_settings LIMIT 1');
+    
+    if (check.rows.length > 0) {
+      await pool.query(
+        `UPDATE payment_settings 
+         SET bank_name = $1, account_number = $2, account_owner = $3, phone_number = $4, 
+             updated_by = $5, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $6`,
+        [bankName, accountNumber, accountOwner, phoneNumber, req.user.id, check.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number, updated_by, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+        [bankName, accountNumber, accountOwner, phoneNumber, req.user.id]
+      );
+    }
     
     res.json({ success: true, message: 'Payment settings updated' });
   } catch (error) {
@@ -1103,30 +1107,25 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     const videoSize = videoData.length;
     const mimeType = video.video_mimetype || 'video/mp4';
 
-    // Get range header for seeking
     const range = req.headers.range;
     
     if (!range) {
-      // No range requested - send full video
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Length', videoSize);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(videoData);
     }
 
-    // Parse range header
     const parts = range.replace(/bytes=/, '').split('-');
     const start = parseInt(parts[0], 10);
     const end = parts[1] ? parseInt(parts[1], 10) : videoSize - 1;
     const chunksize = (end - start) + 1;
 
-    // Validate range
     if (start >= videoSize || end >= videoSize) {
       res.setHeader('Content-Range', `bytes */${videoSize}`);
       return res.status(416).json({ error: 'Requested range not satisfiable' });
     }
 
-    // Send partial content
     res.setHeader('Content-Range', `bytes ${start}-${end}/${videoSize}`);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Length', chunksize);
