@@ -16,6 +16,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============ FIX: Enable trust proxy for Render ============
+app.set('trust proxy', 1);
+
 // ============ SECURITY: Validate required environment variables ============
 const requiredEnv = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME', 'JWT_SECRET'];
 for (const env of requiredEnv) {
@@ -25,25 +28,36 @@ for (const env of requiredEnv) {
   }
 }
 
-// ============ SECURITY: Rate Limiting ============
+// ============ FIX: Rate Limiting with proper config ============
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false }, // FIX: Disable validation
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/api/health';
+  }
 });
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
   message: { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false }, // FIX: Disable validation
 });
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   message: { error: 'Too many upload attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false }, // FIX: Disable validation
 });
 
 // ============ MIDDLEWARE ============
@@ -130,12 +144,12 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ INIT DATABASE ============
+// ============ FIX: INIT DATABASE with all columns ============
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // Users table with subscription columns
+    // ===== FIX: Users table with ALL columns including subscription_status =====
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -160,6 +174,7 @@ async function initDatabase() {
         subscription_notes TEXT
       )
     `);
+    console.log('✅ Users table created with subscription columns');
 
     // Videos table with BYTEA storage
     await pool.query(`
@@ -183,6 +198,7 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
+    console.log('✅ Videos table created');
 
     // Comments table
     await pool.query(`
@@ -194,6 +210,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Comments table created');
 
     // User actions table
     await pool.query(`
@@ -206,6 +223,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User actions table created');
 
     // User logs table
     await pool.query(`
@@ -219,6 +237,7 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ User logs table created');
 
     // Website stats table
     await pool.query(`
@@ -232,6 +251,7 @@ async function initDatabase() {
         total_comments INTEGER DEFAULT 0
       )
     `);
+    console.log('✅ Website stats table created');
 
     // Payment settings table
     await pool.query(`
@@ -245,6 +265,7 @@ async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Payment settings table created');
 
     // Insert default payment settings if empty
     const paymentCheck = await pool.query('SELECT * FROM payment_settings');
@@ -292,7 +313,7 @@ async function initDatabase() {
       [parseInt(userCount.rows[0].count), parseInt(videoCount.rows[0].count)]
     );
 
-    console.log('✅ Database ready - VIDEOS STORED IN DATABASE (BYTEA)');
+    console.log('✅ Database ready');
     console.log('👑 Super Admin:', adminUsername);
     console.log('🔑 Password:', adminPassword);
     console.log('🔐 Secret:', adminSecret);
@@ -1149,6 +1170,11 @@ app.post('/api/videos/:id/share', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to record share' });
   }
+});
+
+// ============ HEALTH CHECK ============
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
 // ============ SERVE FRONTEND ============
