@@ -213,7 +213,7 @@ async function initDatabase() {
         video_filename VARCHAR(255),
         thumbnail_data BYTEA,
         thumbnail_mimetype VARCHAR(100),
-        uploader_id INTEGER REFERENCES users(id),
+        uploader_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         uploader_name VARCHAR(255),
         views INTEGER DEFAULT 0,
         likes INTEGER DEFAULT 0,
@@ -307,9 +307,9 @@ async function initDatabase() {
         status VARCHAR(50) DEFAULT 'pending',
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        processed_by INTEGER REFERENCES users(id),
+        processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         processed_at TIMESTAMP,
-        user_id INTEGER REFERENCES users(id)
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
       )
     `);
     console.log('✅ Join requests table ready');
@@ -904,18 +904,29 @@ app.delete('/api/admin/users/:id', authenticate, authorize('super_admin'), async
       return res.status(403).json({ error: 'Cannot delete another super admin' });
     }
 
-    // Delete user's videos first
+    // First, update join_requests to remove references to this user
+    await pool.query('UPDATE join_requests SET user_id = NULL, processed_by = NULL WHERE user_id = $1 OR processed_by = $1', [userId]);
+    
+    // Delete user's videos (ON DELETE CASCADE will handle this)
     await pool.query('DELETE FROM videos WHERE uploader_id = $1', [userId]);
+    
     // Delete user's comments
     await pool.query('DELETE FROM comments WHERE username IN (SELECT username FROM users WHERE id = $1)', [userId]);
-    // Delete user
+    
+    // Delete user's logs
+    await pool.query('DELETE FROM user_logs WHERE user_id = $1', [userId]);
+    
+    // Delete user's actions
+    await pool.query('DELETE FROM user_actions WHERE user_id = $1', [userId]);
+    
+    // Finally delete the user
     await pool.query('DELETE FROM users WHERE id = $1', [userId]);
     
     await logUserActivity(req.user.id, 'delete_user', { userId }, req);
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({ error: 'Failed to delete user: ' + error.message });
   }
 });
 
@@ -960,7 +971,6 @@ app.post('/api/payment-settings', authenticate, authorize('super_admin'), async 
   try {
     const { bankName, accountNumber, accountOwner, phoneNumber } = req.body;
     
-    // Check if exists
     const check = await pool.query('SELECT id FROM payment_settings LIMIT 1');
     
     if (check.rows.length > 0) {
@@ -1023,7 +1033,6 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    // Check subscription for creators (super_admin bypass)
     if (req.user.role === 'creator') {
       const hasSubscription = await checkSubscription(req.user.id);
       if (!hasSubscription) {
