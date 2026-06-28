@@ -156,7 +156,6 @@ async function ensureAllColumns() {
   try {
     console.log('📝 Checking and adding missing columns...');
     
-    // Add all missing columns to users table
     await pool.query(`
       ALTER TABLE users 
       ADD COLUMN IF NOT EXISTS last_login TIMESTAMP,
@@ -172,6 +171,7 @@ async function ensureAllColumns() {
       ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
       ADD COLUMN IF NOT EXISTS subscription_start DATE,
       ADD COLUMN IF NOT EXISTS subscription_end DATE,
+      ADD COLUMN IF NOT EXISTS subscription_days_remaining INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS subscription_proof_image BYTEA,
       ADD COLUMN IF NOT EXISTS subscription_proof_mimetype VARCHAR(100),
       ADD COLUMN IF NOT EXISTS subscription_proof_uploaded_at TIMESTAMP,
@@ -379,7 +379,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await pool.query(
-      'SELECT id, username, role FROM users WHERE id = $1',
+      'SELECT id, username, role, subscription_end FROM users WHERE id = $1',
       [decoded.userId]
     );
     
@@ -414,7 +414,13 @@ const authorize = (...roles) => {
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     const user = await pool.query(
-      'SELECT id, username, role FROM users WHERE id = $1',
+      `SELECT id, username, role, subscription_end, 
+              CASE 
+                WHEN subscription_end IS NOT NULL 
+                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+                ELSE 0 
+              END as days_remaining
+       FROM users WHERE id = $1`,
       [req.user.id]
     );
     res.json({ user: user.rows[0] });
@@ -512,7 +518,13 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = await pool.query(
-      'SELECT id, username, password, role FROM users WHERE username = $1',
+      `SELECT id, username, password, role, subscription_end,
+              CASE 
+                WHEN subscription_end IS NOT NULL 
+                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+                ELSE 0 
+              END as days_remaining
+       FROM users WHERE username = $1`,
       [username]
     );
 
@@ -525,11 +537,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Try to update last_login - ignore if column doesn't exist
     try {
       await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.rows[0].id]);
     } catch (updateError) {
-      console.log('Note: last_login column update skipped (column may not exist yet)');
+      console.log('Note: last_login column update skipped');
     }
 
     const token = jwt.sign(
@@ -543,7 +554,9 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user.rows[0].id,
         username: user.rows[0].username,
-        role: user.rows[0].role
+        role: user.rows[0].role,
+        days_remaining: user.rows[0].days_remaining || 0,
+        subscription_end: user.rows[0].subscription_end
       }
     });
   } catch (error) {
@@ -624,7 +637,9 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
 app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, full_name, phone_number, email, plan, status, created_at, proof_image IS NOT NULL as has_proof
+      SELECT id, full_name, phone_number, email, plan, status, created_at, 
+             proof_image IS NOT NULL as has_proof,
+             proof_mimetype
       FROM join_requests 
       ORDER BY created_at DESC
     `);
@@ -635,11 +650,31 @@ app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), asyn
   }
 });
 
+// ============ GET PROOF IMAGE ============
+app.get('/api/admin/proof/:id', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const result = await pool.query(
+      'SELECT proof_image, proof_mimetype FROM join_requests WHERE id = $1',
+      [requestId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].proof_image) {
+      return res.status(404).json({ error: 'Proof not found' });
+    }
+
+    res.setHeader('Content-Type', result.rows[0].proof_mimetype || 'image/jpeg');
+    res.send(result.rows[0].proof_image);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get proof' });
+  }
+});
+
 // ============ PROCESS JOIN REQUEST ============
 app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
-    const { action, username, password, secretCode, notes } = req.body;
+    const { action, username, password, secretCode, notes, subscriptionDays } = req.body;
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ error: 'Invalid action' });
@@ -685,11 +720,19 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
       const hashedPassword = await bcrypt.hash(password, 10);
       const hashedSecret = await bcrypt.hash(secretCode, 10);
 
+      // Calculate subscription end date
+      let subscriptionEnd = null;
+      let days = parseInt(subscriptionDays) || 30;
+      if (days > 0) {
+        subscriptionEnd = new Date();
+        subscriptionEnd.setDate(subscriptionEnd.getDate() + days);
+      }
+
       const userResult = await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number) 
-         VALUES ($1, $2, $3, 'creator', $4, $5) 
+        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, subscription_end) 
+         VALUES ($1, $2, $3, 'creator', $4, $5, $6) 
          RETURNING id, username, role`,
-        [username, hashedPassword, hashedSecret, request.full_name, request.phone_number]
+        [username, hashedPassword, hashedSecret, request.full_name, request.phone_number, subscriptionEnd]
       );
 
       await pool.query(
@@ -700,12 +743,13 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
       await logUserActivity(req.user.id, 'approve_join_request', { 
         requestId, 
         userId: userResult.rows[0].id,
-        username 
+        username,
+        subscriptionDays: days
       }, req);
 
       res.json({ 
         success: true, 
-        message: `User ${username} has been approved as a creator!`,
+        message: `User ${username} has been approved as a creator with ${days} days subscription!`,
         user: userResult.rows[0]
       });
     } else {
@@ -735,7 +779,9 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
         COUNT(*) as total_users,
         COUNT(CASE WHEN role = 'super_admin' THEN 1 END) as super_admins,
         COUNT(CASE WHEN role = 'creator' THEN 1 END) as creators,
-        COUNT(CASE WHEN role = 'user' THEN 1 END) as regular_users
+        COUNT(CASE WHEN role = 'user' THEN 1 END) as regular_users,
+        COUNT(CASE WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE THEN 1 END) as active_subscriptions,
+        COUNT(CASE WHEN subscription_end IS NOT NULL AND subscription_end < CURRENT_DATE THEN 1 END) as expired_subscriptions
       FROM users
     `);
 
@@ -762,10 +808,23 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     const commentCount = await pool.query('SELECT COUNT(*) as total_comments FROM comments');
 
     const recentUsers = await pool.query(`
-      SELECT id, username, role, created_at, full_name
+      SELECT id, username, role, created_at, full_name, subscription_end
       FROM users 
       ORDER BY created_at DESC 
       LIMIT 10
+    `);
+
+    // Get all users with subscription info for admin
+    const allUsers = await pool.query(`
+      SELECT id, username, role, subscription_end, 
+             CASE 
+               WHEN subscription_end IS NOT NULL 
+               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+               ELSE 0 
+             END as days_remaining
+      FROM users 
+      WHERE role IN ('creator', 'user')
+      ORDER BY created_at DESC
     `);
 
     const recentVideos = await pool.query(`
@@ -797,7 +856,8 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
         users: recentUsers.rows,
         videos: recentVideos.rows,
         joinRequests: recentJoinRequests.rows
-      }
+      },
+      allUsers: allUsers.rows
     });
 
   } catch (error) {
@@ -810,7 +870,13 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
 app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, username, role, created_at, full_name, phone_number
+      SELECT id, username, role, created_at, full_name, phone_number,
+             subscription_end,
+             CASE 
+               WHEN subscription_end IS NOT NULL 
+               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+               ELSE 0 
+             END as days_remaining
       FROM users 
       ORDER BY created_at DESC
     `);
@@ -818,6 +884,65 @@ app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, 
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+// ============ DELETE USER (Admin only) ============
+app.delete('/api/admin/users/:id', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
+    const userCheck = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userCheck.rows[0].role === 'super_admin') {
+      return res.status(403).json({ error: 'Cannot delete another super admin' });
+    }
+
+    // Delete user's videos first
+    await pool.query('DELETE FROM videos WHERE uploader_id = $1', [userId]);
+    // Delete user's comments
+    await pool.query('DELETE FROM comments WHERE username IN (SELECT username FROM users WHERE id = $1)', [userId]);
+    // Delete user
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    
+    await logUserActivity(req.user.id, 'delete_user', { userId }, req);
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// ============ UPDATE SUBSCRIPTION (Admin) ============
+app.put('/api/admin/users/:id/subscription', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { days } = req.body;
+
+    if (!days || days < 1) {
+      return res.status(400).json({ error: 'Valid days are required' });
+    }
+
+    const subscriptionEnd = new Date();
+    subscriptionEnd.setDate(subscriptionEnd.getDate() + days);
+
+    await pool.query(
+      'UPDATE users SET subscription_end = $1 WHERE id = $2',
+      [subscriptionEnd, userId]
+    );
+
+    await logUserActivity(req.user.id, 'update_subscription', { userId, days }, req);
+    res.json({ success: true, message: `Subscription updated with ${days} days` });
+  } catch (error) {
+    console.error('Update subscription error:', error);
+    res.status(500).json({ error: 'Failed to update subscription' });
   }
 });
 
@@ -870,11 +995,32 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
+// ============ CHECK SUBSCRIPTION STATUS ============
+const checkSubscription = async (userId) => {
+  const result = await pool.query(
+    `SELECT subscription_end 
+     FROM users 
+     WHERE id = $1 AND subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE`,
+    [userId]
+  );
+  return result.rows.length > 0;
+};
+
 app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    // Check subscription for creators (super_admin bypass)
+    if (req.user.role === 'creator') {
+      const hasSubscription = await checkSubscription(req.user.id);
+      if (!hasSubscription) {
+        return res.status(403).json({ 
+          error: 'Your subscription has expired. Please renew to upload videos.' 
+        });
+      }
+    }
+
     const { title, description } = req.body;
     
     if (!title) {
@@ -927,6 +1073,7 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   }
 });
 
+// ============ STREAM VIDEO WITH RANGE SUPPORT ============
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -935,7 +1082,7 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      'SELECT video_data, video_mimetype, file_size FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
 
@@ -944,9 +1091,40 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     }
 
     const video = result.rows[0];
-    res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
-    res.setHeader('Content-Length', video.video_data.length);
-    res.send(video.video_data);
+    const videoData = video.video_data;
+    const videoSize = videoData.length;
+    const mimeType = video.video_mimetype || 'video/mp4';
+
+    // Get range header for seeking
+    const range = req.headers.range;
+    
+    if (!range) {
+      // No range requested - send full video
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', videoSize);
+      res.setHeader('Accept-Ranges', 'bytes');
+      return res.send(videoData);
+    }
+
+    // Parse range header
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : videoSize - 1;
+    const chunksize = (end - start) + 1;
+
+    // Validate range
+    if (start >= videoSize || end >= videoSize) {
+      res.setHeader('Content-Range', `bytes */${videoSize}`);
+      return res.status(416).json({ error: 'Requested range not satisfiable' });
+    }
+
+    // Send partial content
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${videoSize}`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Length', chunksize);
+    res.setHeader('Content-Type', mimeType);
+    res.status(206).send(videoData.slice(start, end + 1));
+
   } catch (error) {
     console.error('Stream error:', error);
     res.status(500).json({ error: 'Failed to stream video: ' + error.message });
@@ -1043,6 +1221,7 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
   }
 });
 
+// ============ DELETE VIDEO (Admin can delete any) ============
 app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1050,6 +1229,7 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
 
+    // Super admin can delete any video, creator can only delete their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
