@@ -27,7 +27,7 @@ for (const env of requiredEnv) {
   }
 }
 
-// ============ SECURITY: Rate Limiting ============
+// ============ RATE LIMITING ============
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -40,7 +40,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -49,7 +49,7 @@ const authLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 10,
+  max: 20,
   message: { error: 'Too many upload attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -67,42 +67,21 @@ const joinLimiter = rateLimit({
 
 // ============ MIDDLEWARE ============
 app.use(helmet({ 
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      mediaSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'", "https:", "data:"],
-    },
-  },
-  crossOriginEmbedderPolicy: true,
-  crossOriginOpenerPolicy: true,
-  crossOriginResourcePolicy: { policy: "same-site" },
-  dnsPrefetchControl: true,
-  frameguard: { action: "deny" },
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-  ieNoOpen: true,
-  noSniff: true,
-  referrerPolicy: { policy: "same-origin" },
-  xssFilter: true,
+  contentSecurityPolicy: false, 
+  crossOriginEmbedderPolicy: false 
 }));
-
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
-
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(compression());
 app.use(cookieParser());
 
-// ============ SECURITY: XSS Protection ============
+// XSS Protection
 app.use((req, res, next) => {
   if (req.body) {
     for (let key in req.body) {
@@ -125,7 +104,7 @@ app.use('/api/join/request', joinLimiter);
 app.use(express.static('public'));
 
 // ============ CREATE DIRECTORIES ============
-['thumbnails', 'proofs'].forEach(dir => {
+['thumbnails'].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -318,7 +297,7 @@ async function initDatabase() {
       )
     `);
 
-    // Join Requests table (separate tracking)
+    // Join Requests table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS join_requests (
         id SERIAL PRIMARY KEY,
@@ -355,7 +334,7 @@ async function initDatabase() {
       console.log('✅ Super Admin created');
     }
 
-    // ===== SECURITY: Initialize payment settings =====
+    // Payment settings
     const paymentCheck = await pool.query('SELECT * FROM payment_settings');
     if (paymentCheck.rows.length === 0) {
       await pool.query(`
@@ -431,35 +410,6 @@ const authorize = (...roles) => {
   };
 };
 
-const checkApproved = async (req, res, next) => {
-  if (req.user.role === 'super_admin') return next();
-  
-  if (req.user.role === 'creator' || req.user.role === 'admin') {
-    const user = await pool.query(
-      'SELECT is_approved, subscription_status FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    
-    if (!user.rows[0].is_approved) {
-      return res.status(403).json({ 
-        error: 'Account not approved',
-        message: 'Your account is pending approval. Please wait for Super Admin to approve your account.',
-        code: 'NOT_APPROVED'
-      });
-    }
-    
-    if (user.rows[0].subscription_status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Subscription required',
-        message: 'Your subscription has expired. Please renew to continue uploading.',
-        code: 'SUBSCRIPTION_EXPIRED'
-      });
-    }
-  }
-  
-  next();
-};
-
 async function logUserActivity(userId, action, details, req) {
   try {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -492,7 +442,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
   try {
     const { fullName, phoneNumber, email, plan } = req.body;
 
-    // ===== SECURITY: Validate all inputs =====
     if (!fullName || !phoneNumber || !plan) {
       return res.status(400).json({ error: 'Full name, phone number, and plan are required' });
     }
@@ -523,16 +472,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
       return res.status(400).json({ error: 'You already have a pending request. Please wait for our team to contact you.' });
     }
 
-    // Check if phone number already registered as user
-    const existingUser = await pool.query(
-      'SELECT * FROM users WHERE phone_number = $1',
-      [phoneNumber]
-    );
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'This phone number is already registered. Please login instead.' });
-    }
-
-    // ===== SECURITY: Handle proof upload =====
     let proofImage = null;
     let proofMimetype = null;
 
@@ -541,7 +480,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
       proofMimetype = req.file.mimetype;
     }
 
-    // ===== SECURITY: Store join request =====
     const result = await pool.query(
       `INSERT INTO join_requests (full_name, phone_number, email, plan, proof_image, proof_mimetype, proof_uploaded_at, status) 
        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, 'pending') 
@@ -549,7 +487,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
       [fullName, phoneNumber, email || null, plan, proofImage, proofMimetype]
     );
 
-    // Log the request
     await logUserActivity(null, 'join_request', { 
       fullName, 
       phoneNumber, 
@@ -569,7 +506,7 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
   }
 });
 
-// ============ GET PENDING JOIN REQUESTS (SuperAdmin only) ============
+// ============ GET PENDING JOIN REQUESTS ============
 app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -583,8 +520,8 @@ app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// ============ PROCESS JOIN REQUEST (SuperAdmin only) ============
-app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('super_admin'), async (req, res) => {
+// ============ PROCESS JOIN REQUEST ============
+app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     const { action, username, password, secretCode, notes } = req.body;
@@ -593,7 +530,6 @@ app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('
       return res.status(400).json({ error: 'Invalid action' });
     }
 
-    // Get the request
     const requestResult = await pool.query(
       'SELECT * FROM join_requests WHERE id = $1',
       [requestId]
@@ -610,30 +546,27 @@ app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('
     }
 
     if (action === 'approve') {
-      // Validate required fields for account creation
       if (!username || !password || !secretCode) {
-        return res.status(400).json({ error: 'Username, password, and secret code are required to create account' });
+        return res.status(400).json({ error: 'Username, password, and secret code are required' });
       }
 
-      if (!isValidUsername(username)) {
-        return res.status(400).json({ error: 'Username must be 3-50 characters and contain only letters, numbers, and underscores' });
+      if (username.length < 3) {
+        return res.status(400).json({ error: 'Username must be at least 3 characters' });
       }
 
-      if (!isValidPassword(password)) {
+      if (password.length < 6) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
 
-      if (!isValidSecretCode(secretCode)) {
+      if (secretCode.length < 4) {
         return res.status(400).json({ error: 'Secret code must be at least 4 characters' });
       }
 
-      // Check if username exists
       const userCheck = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
       if (userCheck.rows.length > 0) {
         return res.status(400).json({ error: 'Username already exists' });
       }
 
-      // Create user account
       const hashedPassword = await bcrypt.hash(password, 10);
       const hashedSecret = await bcrypt.hash(secretCode, 10);
 
@@ -644,7 +577,6 @@ app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('
         [username, hashedPassword, hashedSecret, request.full_name, request.phone_number, request.plan]
       );
 
-      // Update join request
       await pool.query(
         `UPDATE join_requests SET status = 'approved', processed_by = $1, processed_at = CURRENT_TIMESTAMP, notes = $2, user_id = $3 WHERE id = $4`,
         [req.user.id, notes || 'Approved', userResult.rows[0].id, requestId]
@@ -658,12 +590,11 @@ app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('
 
       res.json({
         success: true,
-        message: `✅ User "${username}" has been approved and account created! They need to subscribe and get approved before uploading.`,
+        message: `✅ User "${username}" has been approved and account created!`,
         user: userResult.rows[0]
       });
 
     } else {
-      // Reject
       await pool.query(
         `UPDATE join_requests SET status = 'rejected', processed_by = $1, processed_at = CURRENT_TIMESTAMP, notes = $2 WHERE id = $3`,
         [req.user.id, notes || 'Rejected', requestId]
@@ -686,8 +617,8 @@ app.post('/api/admin/process-join-request/:requestId', authenticate, authorize('
   }
 });
 
-// ============ GET PROOF IMAGE (SuperAdmin only) ============
-app.get('/api/admin/proof/:requestId', authenticate, authorize('super_admin'), async (req, res) => {
+// ============ GET PROOF IMAGE ============
+app.get('/api/admin/proof/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     
@@ -1149,12 +1080,16 @@ app.get('/api/creator/my-videos', authenticate, authorize('creator'), async (req
   }
 });
 
-// ============ VIDEO UPLOAD ============
-app.post('/api/videos/upload', authenticate, checkApproved, authorize('creator', 'super_admin'), upload.fields([
+// ============ VIDEO UPLOAD - YOUR EXACT WORKING VERSION ============
+app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log('📹 Upload request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+    
     const { title, description } = req.body;
     
     if (!title || !req.files || !req.files.video) {
@@ -1168,20 +1103,33 @@ app.post('/api/videos/upload', authenticate, checkApproved, authorize('creator',
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
     
+    const videoPath = '/uploads/videos/' + videoFile.filename;
+    const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
+    
+    console.log('📁 Video saved at:', videoPath);
+    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
+    
     const result = await pool.query(
-      `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
-                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-       RETURNING id, title, description, video_mimetype, video_filename, file_size, created_at`,
-      [title, description || '', videoFile.buffer, videoFile.mimetype, videoFile.originalname,
-       thumbnailFile ? thumbnailFile.buffer : null, thumbnailFile ? thumbnailFile.mimetype : null,
-       req.user.id, req.user.username, videoFile.size]
+      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING id, title, description, video_url, thumbnail_url, file_size, created_at`,
+      [title, description || '', videoPath, thumbnailPath, req.user.id, req.user.username, videoFile.size]
     );
     
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
-    await logUserActivity(req.user.id, 'upload_video', { videoId: result.rows[0].id, title: title, fileSize: videoFile.size }, req);
+    await logUserActivity(req.user.id, 'upload_video', { 
+      videoId: result.rows[0].id, 
+      title: title,
+      fileSize: videoFile.size 
+    }, req);
     
-    res.json({ success: true, message: 'Video uploaded successfully', video: result.rows[0] });
+    console.log('✅ Video uploaded successfully:', result.rows[0].id);
+    
+    res.json({
+      success: true,
+      message: 'Video uploaded successfully',
+      video: result.rows[0]
+    });
   } catch (error) {
     console.error('❌ Upload error:', error);
     res.status(500).json({ error: 'Upload failed: ' + error.message });
@@ -1192,10 +1140,9 @@ app.post('/api/videos/upload', authenticate, checkApproved, authorize('creator',
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name,
-             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
-             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
+      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url, 
+             v.views, v.likes, v.dislikes, v.share_count, v.created_at,
+             u.username as uploader_name
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.is_active = true 
@@ -1208,145 +1155,95 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-app.get('/api/videos/search', async (req, res) => {
-  try {
-    const { q } = req.query;
-    if (!q) {
-      return res.json([]);
-    }
-    
-    const result = await pool.query(`
-      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name,
-             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
-             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
-      FROM videos v 
-      JOIN users u ON v.uploader_id = u.id 
-      WHERE v.is_active = true 
-      AND (v.title ILIKE $1 OR v.description ILIKE $1 OR u.username ILIKE $1)
-      ORDER BY v.created_at DESC
-    `, [`%${q}%`]);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Search error:', error);
-    res.status(500).json({ error: 'Failed to search videos: ' + error.message });
-  }
-});
-
-app.get('/api/videos/:id/stream', async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
-    
-    const result = await pool.query('SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true', [videoId]);
-    if (result.rows.length === 0 || !result.rows[0].video_data) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    
-    const video = result.rows[0];
-    res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
-    res.setHeader('Content-Length', video.video_data.length);
-    res.send(video.video_data);
-  } catch (error) {
-    console.error('Stream error:', error);
-    res.status(500).json({ error: 'Failed to stream video: ' + error.message });
-  }
-});
-
-app.get('/api/videos/:id/thumbnail', async (req, res) => {
-  try {
-    const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
-    
-    const result = await pool.query('SELECT thumbnail_data, thumbnail_mimetype FROM videos WHERE id = $1 AND is_active = true', [videoId]);
-    if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
-      return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
-    }
-    
-    const thumbnail = result.rows[0];
-    res.setHeader('Content-Type', thumbnail.thumbnail_mimetype || 'image/jpeg');
-    res.send(thumbnail.thumbnail_data);
-  } catch (error) {
-    console.error('Thumbnail error:', error);
-    res.status(500).json({ error: 'Failed to get thumbnail: ' + error.message });
-  }
-});
-
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
     
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
     const videoResult = await pool.query(`
-      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name,
-             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
-             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
+      SELECT v.*, u.username as uploader_name 
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.id = $1 AND v.is_active = true
     `, [videoId]);
     
-    if (videoResult.rows.length === 0) return res.status(404).json({ error: 'Video not found' });
+    if (videoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
     
     const commentsResult = await pool.query(
       'SELECT id, username, comment, created_at FROM comments WHERE video_id = $1 ORDER BY created_at DESC',
       [videoId]
     );
     
-    res.json({ ...videoResult.rows[0], comments: commentsResult.rows });
+    res.json({
+      ...videoResult.rows[0],
+      comments: commentsResult.rows
+    });
   } catch (error) {
     console.error('Get video error:', error);
     res.status(500).json({ error: 'Failed to get video: ' + error.message });
   }
 });
 
-app.put('/api/videos/:id', authenticate, checkApproved, authorize('creator', 'super_admin'), async (req, res) => {
+app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
+    
     if (!title) return res.status(400).json({ error: 'Title required' });
 
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
+    
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only edit your own videos' });
     }
 
     const result = await pool.query(
-      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING id, title, description, created_at',
+      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING *',
       [title, description || '', videoId]
     );
     
     await logUserActivity(req.user.id, 'edit_video', { videoId, title }, req);
+    
     res.json({ success: true, video: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update video' });
   }
 });
 
-app.delete('/api/videos/:id', authenticate, checkApproved, authorize('creator', 'super_admin'), async (req, res) => {
+app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
-    if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
     
-    const videoResult = await pool.query('SELECT * FROM videos WHERE id = $1', [videoId]);
-    if (videoResult.rows.length === 0) return res.status(404).json({ error: 'Video not found' });
+    const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
+    if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
-    const video = videoResult.rows[0];
-    if (req.user.role !== 'super_admin' && video.uploader_id !== req.user.id) {
+    if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
-    
+
+    const video = check.rows[0];
+    if (video.video_url) {
+      const filePath = path.join(__dirname, video.video_url);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    if (video.thumbnail_url) {
+      const filePath = path.join(__dirname, video.thumbnail_url);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
-    await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
-    await logUserActivity(req.user.id, 'delete_video', { videoId, title: video.title, uploader: video.uploader_name }, req);
-    res.json({ success: true, message: 'Video deleted successfully' });
+    await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
+    
+    res.json({ success: true });
   } catch (error) {
-    console.error('❌ Delete error:', error);
-    res.status(500).json({ error: 'Failed to delete video: ' + error.message });
+    res.status(500).json({ error: 'Failed to delete video' });
   }
 });
 
@@ -1370,7 +1267,10 @@ app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { username, comment } = req.body;
-    if (!username || !comment) return res.status(400).json({ error: 'Name and comment required' });
+    
+    if (!username || !comment) {
+      return res.status(400).json({ error: 'Name and comment required' });
+    }
 
     const result = await pool.query(
       'INSERT INTO comments (video_id, username, comment) VALUES ($1, $2, $3) RETURNING id, username, comment, created_at',
@@ -1378,6 +1278,7 @@ app.post('/api/videos/:id/comment', async (req, res) => {
     );
     
     await pool.query('UPDATE website_stats SET total_comments = total_comments + 1');
+    
     res.json({ success: true, comment: result.rows[0] });
   } catch (error) {
     console.error('Comment error:', error);
