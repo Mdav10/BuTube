@@ -100,6 +100,9 @@ const upload = multer({
     if (file.fieldname === 'thumbnail' && !file.mimetype.startsWith('image/')) {
       return cb(new Error('Only image files allowed'));
     }
+    if (file.fieldname === 'proof' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files allowed for proof'));
+    }
     cb(null, true);
   }
 });
@@ -131,7 +134,7 @@ async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // Users table
+    // Users table with subscription columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -143,7 +146,17 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP,
         login_attempts INTEGER DEFAULT 0,
-        locked_until TIMESTAMP
+        locked_until TIMESTAMP,
+        subscription_status VARCHAR(50) DEFAULT 'inactive',
+        subscription_plan VARCHAR(50),
+        subscription_start DATE,
+        subscription_end DATE,
+        subscription_proof_image BYTEA,
+        subscription_proof_mimetype VARCHAR(100),
+        subscription_proof_uploaded_at TIMESTAMP,
+        subscription_verified_by INTEGER REFERENCES users(id),
+        subscription_verified_at TIMESTAMP,
+        subscription_notes TEXT
       )
     `);
 
@@ -219,7 +232,30 @@ async function initDatabase() {
       )
     `);
 
-    // ===== FIX: Super Admin from .env =====
+    // Payment settings table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payment_settings (
+        id SERIAL PRIMARY KEY,
+        bank_name VARCHAR(255),
+        account_number VARCHAR(100),
+        account_owner VARCHAR(255),
+        phone_number VARCHAR(50),
+        updated_by INTEGER REFERENCES users(id),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default payment settings if empty
+    const paymentCheck = await pool.query('SELECT * FROM payment_settings');
+    if (paymentCheck.rows.length === 0) {
+      await pool.query(`
+        INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number)
+        VALUES ('Equity Bank', '1234567890', 'AKABAKUZE Platform', '+250 788 888 888')
+      `);
+      console.log('✅ Default payment settings created');
+    }
+
+    // ===== Super Admin from .env =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
     const adminPassword = process.env.ADMIN_PASSWORD || '08800+_+Owner!';
     const adminSecret = process.env.ADMIN_SECRET || 'ADMIN_SECRET_2024';
@@ -229,8 +265,8 @@ async function initDatabase() {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const hashedSecret = await bcrypt.hash(adminSecret, 10);
       await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, heard_from) 
-         VALUES ($1, $2, $3, 'super_admin', 'system')`,
+        `INSERT INTO users (username, password, secret_code, role, heard_from, subscription_status) 
+         VALUES ($1, $2, $3, 'super_admin', 'system', 'active')`,
         [adminUsername, hashedPassword, hashedSecret]
       );
       console.log('✅ Super Admin created from .env');
@@ -270,7 +306,7 @@ const authenticate = async (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [decoded.userId]);
+    const user = await pool.query('SELECT id, username, role, subscription_status FROM users WHERE id = $1', [decoded.userId]);
     if (!user.rows.length) return res.status(401).json({ error: 'Invalid token' });
     req.user = user.rows[0];
     next();
@@ -280,6 +316,56 @@ const authenticate = async (req, res, next) => {
     }
     res.status(403).json({ error: 'Invalid token' });
   }
+};
+
+// ============ SUBSCRIPTION CHECK MIDDLEWARE ============
+const checkSubscription = async (req, res, next) => {
+  // SuperAdmin always has access
+  if (req.user.role === 'super_admin') {
+    return next();
+  }
+  
+  // Check if user is a creator (admin)
+  if (req.user.role === 'admin' || req.user.role === 'creator') {
+    const user = await pool.query(
+      'SELECT subscription_status, subscription_end FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(403).json({ error: 'User not found' });
+    }
+    
+    const subscription = user.rows[0];
+    
+    // Check if subscription is active
+    if (subscription.subscription_status !== 'active') {
+      return res.status(403).json({ 
+        error: 'Subscription required',
+        message: 'Your subscription has expired. Please renew to continue uploading.',
+        code: 'SUBSCRIPTION_EXPIRED'
+      });
+    }
+    
+    // Check if subscription has expired (if end date is set)
+    if (subscription.subscription_end) {
+      const today = new Date();
+      const endDate = new Date(subscription.subscription_end);
+      if (endDate < today) {
+        await pool.query(
+          'UPDATE users SET subscription_status = $1 WHERE id = $2',
+          ['inactive', req.user.id]
+        );
+        return res.status(403).json({ 
+          error: 'Subscription expired',
+          message: 'Your subscription has expired. Please renew to continue uploading.',
+          code: 'SUBSCRIPTION_EXPIRED'
+        });
+      }
+    }
+  }
+  
+  next();
 };
 
 const authorize = (...roles) => {
@@ -321,8 +407,8 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedSecret = await bcrypt.hash(secretCode, 10);
     
     const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, heard_from, role) 
-       VALUES ($1, $2, $3, $4, 'user') RETURNING id, username, role`,
+      `INSERT INTO users (username, password, secret_code, heard_from, role, subscription_status) 
+       VALUES ($1, $2, $3, $4, 'user', 'inactive') RETURNING id, username, role`,
       [username, hashedPassword, hashedSecret, heardFrom]
     );
     
@@ -368,14 +454,27 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role,
+        subscription_status: user.subscription_status 
+      } 
+    });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
-  res.json({ user: req.user });
+  // Get full user data including subscription
+  const userData = await pool.query(
+    'SELECT id, username, role, subscription_status, subscription_plan, subscription_start, subscription_end FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  res.json({ user: userData.rows[0] });
 });
 
 app.post('/api/auth/heard-from', authenticate, async (req, res) => {
@@ -385,6 +484,270 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update' });
+  }
+});
+
+// ============ SUBSCRIPTION ROUTES ============
+
+// Get subscription plans
+app.get('/api/subscription/plans', (req, res) => {
+  res.json({
+    plans: [
+      { id: 'monthly', name: 'Monthly', price: 50, duration: '1 month' },
+      { id: 'quarterly', name: 'Quarterly', price: 100, duration: '3 months' },
+      { id: 'semiannual', name: 'Semi-Annual', price: 150, duration: '6 months' },
+      { id: 'yearly', name: 'Yearly', price: 300, duration: '12 months' }
+    ]
+  });
+});
+
+// Get payment settings (for users to see where to pay)
+app.get('/api/subscription/payment-settings', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT bank_name, account_number, account_owner, phone_number FROM payment_settings LIMIT 1');
+    if (result.rows.length === 0) {
+      return res.json({ 
+        bank_name: 'Not set', 
+        account_number: 'Not set', 
+        account_owner: 'Not set', 
+        phone_number: 'Not set' 
+      });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get payment settings' });
+  }
+});
+
+// Update payment settings (SuperAdmin only)
+app.put('/api/subscription/payment-settings', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const { bank_name, account_number, account_owner, phone_number } = req.body;
+    
+    await pool.query(
+      `UPDATE payment_settings SET 
+        bank_name = $1, 
+        account_number = $2, 
+        account_owner = $3, 
+        phone_number = $4, 
+        updated_by = $5, 
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = 1`,
+      [bank_name, account_number, account_owner, phone_number, req.user.id]
+    );
+    
+    await logUserActivity(req.user.id, 'update_payment_settings', { bank_name, account_number }, req);
+    res.json({ success: true, message: 'Payment settings updated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// Request subscription (Creator/User)
+app.post('/api/subscription/request', authenticate, async (req, res) => {
+  try {
+    const { plan } = req.body;
+    
+    // Users cannot request subscription - only creators (admins)
+    if (req.user.role !== 'admin' && req.user.role !== 'creator') {
+      return res.status(403).json({ error: 'Only creators can request subscription' });
+    }
+    
+    // Check if user already has active subscription
+    const userCheck = await pool.query(
+      'SELECT subscription_status FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (userCheck.rows[0].subscription_status === 'active') {
+      return res.status(400).json({ error: 'You already have an active subscription' });
+    }
+    
+    // Calculate end date based on plan
+    const startDate = new Date();
+    let endDate = new Date();
+    let planName = '';
+    let planPrice = 0;
+    
+    switch(plan) {
+      case 'monthly':
+        endDate.setMonth(endDate.getMonth() + 1);
+        planName = 'Monthly';
+        planPrice = 50;
+        break;
+      case 'quarterly':
+        endDate.setMonth(endDate.getMonth() + 3);
+        planName = 'Quarterly';
+        planPrice = 100;
+        break;
+      case 'semiannual':
+        endDate.setMonth(endDate.getMonth() + 6);
+        planName = 'Semi-Annual';
+        planPrice = 150;
+        break;
+      case 'yearly':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        planName = 'Yearly';
+        planPrice = 300;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid plan selected' });
+    }
+    
+    // Update user with pending subscription
+    await pool.query(
+      `UPDATE users SET 
+        subscription_status = 'pending',
+        subscription_plan = $1,
+        subscription_start = $2,
+        subscription_end = $3
+       WHERE id = $4`,
+      [`${planName} - $${planPrice}`, startDate, endDate, req.user.id]
+    );
+    
+    await logUserActivity(req.user.id, 'request_subscription', { plan, price: planPrice }, req);
+    
+    res.json({ 
+      success: true, 
+      message: 'Subscription request submitted. Please upload payment proof.',
+      plan: planName,
+      price: planPrice,
+      startDate: startDate,
+      endDate: endDate
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to request subscription' });
+  }
+});
+
+// Upload payment proof (Creator/User)
+app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Proof image is required' });
+    }
+    
+    // Users cannot upload proof - only creators (admins)
+    if (req.user.role !== 'admin' && req.user.role !== 'creator') {
+      return res.status(403).json({ error: 'Only creators can upload payment proof' });
+    }
+    
+    const proofFile = req.file;
+    
+    await pool.query(
+      `UPDATE users SET 
+        subscription_proof_image = $1,
+        subscription_proof_mimetype = $2,
+        subscription_proof_uploaded_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [proofFile.buffer, proofFile.mimetype, req.user.id]
+    );
+    
+    await logUserActivity(req.user.id, 'upload_payment_proof', { fileSize: proofFile.size }, req);
+    
+    res.json({ 
+      success: true, 
+      message: 'Payment proof uploaded. Waiting for admin verification.' 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to upload proof' });
+  }
+});
+
+// Get subscription proof for verification (SuperAdmin only)
+app.get('/api/subscription/proof/:userId', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    const result = await pool.query(
+      'SELECT subscription_proof_image, subscription_proof_mimetype FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].subscription_proof_image) {
+      return res.status(404).json({ error: 'No proof found' });
+    }
+    
+    const proof = result.rows[0];
+    res.setHeader('Content-Type', proof.subscription_proof_mimetype || 'image/jpeg');
+    res.send(proof.subscription_proof_image);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get proof' });
+  }
+});
+
+// Get pending subscriptions (SuperAdmin only)
+app.get('/api/subscription/pending', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, username, subscription_plan, subscription_start, subscription_end, 
+             subscription_proof_uploaded_at, subscription_proof_image IS NOT NULL as has_proof
+      FROM users 
+      WHERE subscription_status = 'pending' AND role IN ('admin', 'creator')
+      ORDER BY subscription_proof_uploaded_at DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get pending subscriptions' });
+  }
+});
+
+// Verify subscription (SuperAdmin only)
+app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { approve, notes } = req.body;
+    
+    if (approve) {
+      // Activate subscription
+      await pool.query(
+        `UPDATE users SET 
+          subscription_status = 'active',
+          subscription_verified_by = $1,
+          subscription_verified_at = CURRENT_TIMESTAMP,
+          subscription_notes = $2
+         WHERE id = $3`,
+        [req.user.id, notes || 'Approved', userId]
+      );
+      
+      // If user is not already a creator, make them one
+      await pool.query(
+        `UPDATE users SET role = 'creator' WHERE id = $1 AND role = 'user'`,
+        [userId]
+      );
+      
+      await logUserActivity(req.user.id, 'approve_subscription', { userId }, req);
+      res.json({ success: true, message: 'Subscription approved and activated' });
+    } else {
+      // Reject subscription
+      await pool.query(
+        `UPDATE users SET 
+          subscription_status = 'rejected',
+          subscription_notes = $1,
+          subscription_verified_by = $2,
+          subscription_verified_at = CURRENT_TIMESTAMP
+         WHERE id = $3`,
+        [notes || 'Rejected', req.user.id, userId]
+      );
+      
+      await logUserActivity(req.user.id, 'reject_subscription', { userId }, req);
+      res.json({ success: true, message: 'Subscription rejected' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to verify subscription' });
+  }
+});
+
+// Get subscription status for current user
+app.get('/api/subscription/status', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT subscription_status, subscription_plan, subscription_start, subscription_end FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get subscription status' });
   }
 });
 
@@ -400,16 +763,21 @@ app.post('/api/admin/create-admin', authenticate, authorize('super_admin'), asyn
     const hashedSecret = await bcrypt.hash(secretCode, 10);
     
     const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, role) 
-       VALUES ($1, $2, $3, 'admin') RETURNING id, username, role`,
+      `INSERT INTO users (username, password, secret_code, role, subscription_status) 
+       VALUES ($1, $2, $3, 'creator', 'pending') RETURNING id, username, role`,
       [username, hashedPassword, hashedSecret]
     );
     
     await logUserActivity(req.user.id, 'create_admin', { newAdmin: username }, req);
     
-    res.json({ success: true, admin: result.rows[0], secretCode });
+    res.json({ 
+      success: true, 
+      admin: result.rows[0], 
+      secretCode,
+      message: 'Creator created. They need to subscribe before uploading.' 
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create admin' });
+    res.status(500).json({ error: 'Failed to create creator' });
   }
 });
 
@@ -417,14 +785,15 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   try {
     const stats = await pool.query('SELECT * FROM website_stats LIMIT 1');
     const users = await pool.query('SELECT COUNT(*) as total FROM users');
-    const admins = await pool.query("SELECT COUNT(*) as total FROM users WHERE role IN ('admin', 'super_admin')");
+    const admins = await pool.query("SELECT COUNT(*) as total FROM users WHERE role IN ('creator', 'super_admin')");
     const videos = await pool.query('SELECT COUNT(*) as total FROM videos');
     const comments = await pool.query('SELECT COUNT(*) as total FROM comments');
+    const pendingSubs = await pool.query("SELECT COUNT(*) as total FROM users WHERE subscription_status = 'pending' AND role IN ('creator', 'admin')");
     
     const allAdmins = await pool.query(`
-      SELECT id, username, role, created_at 
+      SELECT id, username, role, created_at, subscription_status, subscription_plan
       FROM users 
-      WHERE role IN ('admin', 'super_admin')
+      WHERE role IN ('creator', 'super_admin')
       ORDER BY created_at DESC
     `);
 
@@ -447,7 +816,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
     `);
 
     const recentUsers = await pool.query(`
-      SELECT id, username, role, heard_from, created_at 
+      SELECT id, username, role, heard_from, created_at, subscription_status
       FROM users 
       ORDER BY created_at DESC 
       LIMIT 20
@@ -475,6 +844,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       adminCount: parseInt(admins.rows[0].total),
       videoCount: parseInt(videos.rows[0].total),
       commentCount: parseInt(comments.rows[0].total),
+      pendingSubscriptions: parseInt(pendingSubs.rows[0].total),
       allAdmins: allAdmins.rows,
       allVideos: allVideos.rows,
       topVideos: topVideos.rows,
@@ -488,7 +858,7 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+app.get('/api/admin/my-stats', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videos = await pool.query(
       'SELECT COUNT(*) as total, COALESCE(SUM(views), 0) as total_views, COALESCE(SUM(likes), 0) as total_likes FROM videos WHERE uploader_id = $1 AND is_active = true',
@@ -514,7 +884,7 @@ app.get('/api/admin/my-stats', authenticate, authorize('admin', 'super_admin'), 
   }
 });
 
-app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+app.get('/api/admin/my-videos', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at, 
@@ -530,15 +900,11 @@ app.get('/api/admin/my-videos', authenticate, authorize('admin', 'super_admin'),
 });
 
 // ============ VIDEO UPLOAD ============
-app.post('/api/videos/upload', authenticate, authorize('admin', 'super_admin'), upload.fields([
+app.post('/api/videos/upload', authenticate, checkSubscription, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    // REMOVED: console.log('📹 Upload request received');
-    // REMOVED: console.log('Body:', req.body);
-    // REMOVED: console.log('Files:', req.files);
-    
     const { title, description } = req.body;
     
     if (!title || !req.files || !req.files.video) {
@@ -698,7 +1064,7 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+app.put('/api/videos/:id', authenticate, checkSubscription, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     const { title, description } = req.body;
@@ -725,7 +1091,7 @@ app.put('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), asyn
   }
 });
 
-app.delete('/api/videos/:id', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+app.delete('/api/videos/:id', authenticate, checkSubscription, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
     
