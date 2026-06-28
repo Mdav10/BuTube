@@ -414,10 +414,10 @@ const authorize = (...roles) => {
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     const user = await pool.query(
-      `SELECT id, username, role, subscription_end, 
+      `SELECT id, username, role, subscription_end,
               CASE 
-                WHEN subscription_end IS NOT NULL 
-                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+                WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
+                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
                 ELSE 0 
               END as days_remaining
        FROM users WHERE id = $1`,
@@ -425,6 +425,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     );
     res.json({ user: user.rows[0] });
   } catch (error) {
+    console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user info' });
   }
 });
@@ -520,8 +521,8 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await pool.query(
       `SELECT id, username, password, role, subscription_end,
               CASE 
-                WHEN subscription_end IS NOT NULL 
-                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+                WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
+                THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
                 ELSE 0 
               END as days_remaining
        FROM users WHERE username = $1`,
@@ -814,12 +815,11 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       LIMIT 10
     `);
 
-    // Get all users with subscription info for admin
     const allUsers = await pool.query(`
       SELECT id, username, role, subscription_end, 
              CASE 
-               WHEN subscription_end IS NOT NULL 
-               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+               WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
+               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
                ELSE 0 
              END as days_remaining
       FROM users 
@@ -873,8 +873,8 @@ app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, 
       SELECT id, username, role, created_at, full_name, phone_number,
              subscription_end,
              CASE 
-               WHEN subscription_end IS NOT NULL 
-               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))
+               WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
+               THEN EXTRACT(DAY FROM (subscription_end - CURRENT_DATE))::integer
                ELSE 0 
              END as days_remaining
       FROM users 
@@ -961,9 +961,17 @@ app.post('/api/payment-settings', authenticate, authorize('super_admin'), async 
   try {
     const { bankName, accountNumber, accountOwner, phoneNumber } = req.body;
     
+    // Update or insert
     await pool.query(
       `INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number, updated_by, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+       ON CONFLICT (id) DO UPDATE SET 
+         bank_name = EXCLUDED.bank_name,
+         account_number = EXCLUDED.account_number,
+         account_owner = EXCLUDED.account_owner,
+         phone_number = EXCLUDED.phone_number,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = EXCLUDED.updated_at`,
       [bankName, accountNumber, accountOwner, phoneNumber, req.user.id]
     );
     
@@ -1082,7 +1090,7 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT video_data, video_mimetype, file_size FROM videos WHERE id = $1 AND is_active = true',
+      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
 
@@ -1221,7 +1229,6 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
   }
 });
 
-// ============ DELETE VIDEO (Admin can delete any) ============
 app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1229,7 +1236,6 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
     const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
 
-    // Super admin can delete any video, creator can only delete their own
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
