@@ -109,17 +109,8 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER CONFIG - Disk Storage ============
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = file.fieldname === 'video' ? 'uploads/videos' : 'uploads/thumbnails';
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
-    cb(null, unique);
-  }
-});
+// ============ MULTER CONFIG ============
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -224,14 +215,17 @@ async function initDatabase() {
     `);
     console.log('✅ Users table ready');
 
-    // ===== FIX: Videos table with correct columns =====
+    // Videos table with BYTEA for video storage
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         title VARCHAR(500) NOT NULL,
         description TEXT,
-        video_url VARCHAR(500) NOT NULL,
-        thumbnail_url VARCHAR(500),
+        video_data BYTEA NOT NULL,
+        video_mimetype VARCHAR(100),
+        video_filename VARCHAR(255),
+        thumbnail_data BYTEA,
+        thumbnail_mimetype VARCHAR(100),
         uploader_id INTEGER REFERENCES users(id),
         uploader_name VARCHAR(255),
         views INTEGER DEFAULT 0,
@@ -243,7 +237,7 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
-    console.log('✅ Videos table ready');
+    console.log('✅ Videos table created with BYTEA storage');
 
     // Comments table
     await pool.query(`
@@ -1000,9 +994,8 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
       ORDER BY created_at DESC
     `);
 
-    // ===== FIX: Use video_url instead of video_data =====
     const allVideos = await pool.query(`
-      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url,
+      SELECT v.id, v.title, v.description, 
              v.views, v.likes, v.share_count, v.created_at, u.username as uploader_name
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
@@ -1088,7 +1081,8 @@ app.get('/api/creator/my-videos', authenticate, authorize('creator'), async (req
   try {
     const result = await pool.query(
       `SELECT id, title, description, uploader_id, uploader_name, views, likes, dislikes, share_count, file_size, created_at,
-              video_url, thumbnail_url
+              CASE WHEN video_data IS NOT NULL THEN true ELSE false END as has_video,
+              CASE WHEN thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
        FROM videos WHERE uploader_id = $1 AND is_active = true ORDER BY created_at DESC`,
       [req.user.id]
     );
@@ -1099,7 +1093,7 @@ app.get('/api/creator/my-videos', authenticate, authorize('creator'), async (req
   }
 });
 
-// ============ VIDEO UPLOAD - YOUR EXACT WORKING VERSION ============
+// ============ VIDEO UPLOAD - STORE IN DATABASE AS BYTEA ============
 app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -1120,17 +1114,26 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
       return res.status(400).json({ error: 'Video file size exceeds 500MB limit' });
     }
     
-    const videoPath = '/uploads/videos/' + videoFile.filename;
-    const thumbnailPath = thumbnailFile ? '/uploads/thumbnails/' + thumbnailFile.filename : null;
+    console.log('📁 Video size:', videoFile.size, 'bytes');
     
-    console.log('📁 Video saved at:', videoPath);
-    console.log('🖼️ Thumbnail saved at:', thumbnailPath);
-    
+    // STORE IN DATABASE AS BYTEA
     const result = await pool.query(
-      `INSERT INTO videos (title, description, video_url, thumbnail_url, uploader_id, uploader_name, file_size) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id, title, description, video_url, thumbnail_url, file_size, created_at`,
-      [title, description || '', videoPath, thumbnailPath, req.user.id, req.user.username, videoFile.size]
+      `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
+                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+       RETURNING id, title, description, video_mimetype, video_filename, file_size, created_at`,
+      [
+        title, 
+        description || '', 
+        videoFile.buffer,
+        videoFile.mimetype,
+        videoFile.originalname,
+        thumbnailFile ? thumbnailFile.buffer : null,
+        thumbnailFile ? thumbnailFile.mimetype : null,
+        req.user.id, 
+        req.user.username, 
+        videoFile.size
+      ]
     );
     
     await pool.query('UPDATE website_stats SET total_videos = total_videos + 1');
@@ -1140,7 +1143,7 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
       fileSize: videoFile.size 
     }, req);
     
-    console.log('✅ Video uploaded successfully:', result.rows[0].id);
+    console.log('✅ Video uploaded successfully to database:', result.rows[0].id);
     
     res.json({
       success: true,
@@ -1153,13 +1156,15 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   }
 });
 
-// ============ VIDEO ROUTES ============
+// ============ VIDEO ROUTES - STREAM FROM DATABASE ============
 app.get('/api/videos', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.id, v.title, v.description, v.video_url, v.thumbnail_url, 
+      SELECT v.id, v.title, v.description, 
              v.views, v.likes, v.dislikes, v.share_count, v.created_at,
-             u.username as uploader_name
+             u.username as uploader_name,
+             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
+             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.is_active = true 
@@ -1169,6 +1174,59 @@ app.get('/api/videos', async (req, res) => {
   } catch (error) {
     console.error('Get videos error:', error);
     res.status(500).json({ error: 'Failed to get videos: ' + error.message });
+  }
+});
+
+// STREAM VIDEO FROM DATABASE
+app.get('/api/videos/:id/stream', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+    
+    const result = await pool.query(
+      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].video_data) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const video = result.rows[0];
+    res.setHeader('Content-Type', video.video_mimetype || 'video/mp4');
+    res.setHeader('Content-Length', video.video_data.length);
+    res.send(video.video_data);
+  } catch (error) {
+    console.error('Stream error:', error);
+    res.status(500).json({ error: 'Failed to stream video: ' + error.message });
+  }
+});
+
+// GET THUMBNAIL FROM DATABASE
+app.get('/api/videos/:id/thumbnail', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+    
+    const result = await pool.query(
+      'SELECT thumbnail_data, thumbnail_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].thumbnail_data) {
+      return res.sendFile(path.join(__dirname, 'public', 'default-thumbnail.jpg'));
+    }
+    
+    const thumbnail = result.rows[0];
+    res.setHeader('Content-Type', thumbnail.thumbnail_mimetype || 'image/jpeg');
+    res.send(thumbnail.thumbnail_data);
+  } catch (error) {
+    console.error('Thumbnail error:', error);
+    res.status(500).json({ error: 'Failed to get thumbnail: ' + error.message });
   }
 });
 
@@ -1182,7 +1240,10 @@ app.get('/api/videos/:id', async (req, res) => {
     await pool.query('UPDATE videos SET views = views + 1 WHERE id = $1', [videoId]);
     
     const videoResult = await pool.query(`
-      SELECT v.*, u.username as uploader_name 
+      SELECT v.id, v.title, v.description, v.views, v.likes, v.dislikes, v.share_count, v.created_at,
+             u.username as uploader_name,
+             CASE WHEN v.video_data IS NOT NULL THEN true ELSE false END as has_video,
+             CASE WHEN v.thumbnail_data IS NOT NULL THEN true ELSE false END as has_thumbnail
       FROM videos v 
       JOIN users u ON v.uploader_id = u.id 
       WHERE v.id = $1 AND v.is_active = true
@@ -1222,7 +1283,7 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
     }
 
     const result = await pool.query(
-      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING *',
+      'UPDATE videos SET title = $1, description = $2 WHERE id = $3 RETURNING id, title, description, created_at',
       [title, description || '', videoId]
     );
     
@@ -1238,28 +1299,20 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
   try {
     const videoId = parseInt(req.params.id);
     
-    const check = await pool.query('SELECT uploader_id, video_url, thumbnail_url FROM videos WHERE id = $1', [videoId]);
+    const check = await pool.query('SELECT uploader_id FROM videos WHERE id = $1', [videoId]);
     if (!check.rows.length) return res.status(404).json({ error: 'Video not found' });
     
     if (check.rows[0].uploader_id !== req.user.id && req.user.role !== 'super_admin') {
       return res.status(403).json({ error: 'You can only delete your own videos' });
     }
 
-    const video = check.rows[0];
-    if (video.video_url) {
-      const filePath = path.join(__dirname, video.video_url);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-    if (video.thumbnail_url) {
-      const filePath = path.join(__dirname, video.thumbnail_url);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-
     await pool.query('DELETE FROM videos WHERE id = $1', [videoId]);
+    await pool.query('UPDATE website_stats SET total_videos = total_videos - 1');
     await logUserActivity(req.user.id, 'delete_video', { videoId }, req);
     
     res.json({ success: true });
   } catch (error) {
+    console.error('❌ Delete error:', error);
     res.status(500).json({ error: 'Failed to delete video' });
   }
 });
