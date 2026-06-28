@@ -35,11 +35,8 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false }, // FIX: Disable validation
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health';
-  }
+  validate: { trustProxy: false },
+  skip: (req) => req.path === '/api/health'
 });
 
 const authLimiter = rateLimit({
@@ -48,7 +45,7 @@ const authLimiter = rateLimit({
   message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false }, // FIX: Disable validation
+  validate: { trustProxy: false },
 });
 
 const uploadLimiter = rateLimit({
@@ -57,7 +54,7 @@ const uploadLimiter = rateLimit({
   message: { error: 'Too many upload attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false }, // FIX: Disable validation
+  validate: { trustProxy: false },
 });
 
 // ============ MIDDLEWARE ============
@@ -144,12 +141,89 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ============ FIX: INIT DATABASE with all columns ============
+// ============ FIX: Add missing columns to existing tables ============
+async function addMissingColumns() {
+  try {
+    console.log('🔧 Checking for missing columns...');
+
+    // Check if subscription_status column exists in users table
+    const columnCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'subscription_status'
+    `);
+
+    if (columnCheck.rows.length === 0) {
+      console.log('📝 Adding subscription columns to users table...');
+      
+      // Add all subscription columns
+      await pool.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'inactive',
+        ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS subscription_start DATE,
+        ADD COLUMN IF NOT EXISTS subscription_end DATE,
+        ADD COLUMN IF NOT EXISTS subscription_proof_image BYTEA,
+        ADD COLUMN IF NOT EXISTS subscription_proof_mimetype VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS subscription_proof_uploaded_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS subscription_verified_by INTEGER REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS subscription_verified_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS subscription_notes TEXT
+      `);
+      console.log('✅ Subscription columns added successfully');
+    } else {
+      console.log('✅ Subscription columns already exist');
+    }
+
+    // Check if payment_settings table exists
+    const tableCheck = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'payment_settings'
+    `);
+
+    if (tableCheck.rows.length === 0) {
+      console.log('📝 Creating payment_settings table...');
+      await pool.query(`
+        CREATE TABLE payment_settings (
+          id SERIAL PRIMARY KEY,
+          bank_name VARCHAR(255),
+          account_number VARCHAR(100),
+          account_owner VARCHAR(255),
+          phone_number VARCHAR(50),
+          updated_by INTEGER REFERENCES users(id),
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      await pool.query(`
+        INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number)
+        VALUES ('Equity Bank', '1234567890', 'AKABAKUZE Platform', '+250 788 888 888')
+      `);
+      console.log('✅ Payment settings table created');
+    } else {
+      console.log('✅ Payment settings table already exists');
+    }
+
+    // Update Super Admin subscription status
+    const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
+    await pool.query(
+      `UPDATE users SET subscription_status = 'active' WHERE username = $1 AND subscription_status IS NULL`,
+      [adminUsername]
+    );
+    console.log('✅ Super Admin subscription status updated');
+
+  } catch (error) {
+    console.error('❌ Error adding columns:', error.message);
+  }
+}
+
+// ============ INIT DATABASE ============
 async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // ===== FIX: Users table with ALL columns including subscription_status =====
+    // Create base tables if they don't exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -161,22 +235,11 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP,
         login_attempts INTEGER DEFAULT 0,
-        locked_until TIMESTAMP,
-        subscription_status VARCHAR(50) DEFAULT 'inactive',
-        subscription_plan VARCHAR(50),
-        subscription_start DATE,
-        subscription_end DATE,
-        subscription_proof_image BYTEA,
-        subscription_proof_mimetype VARCHAR(100),
-        subscription_proof_uploaded_at TIMESTAMP,
-        subscription_verified_by INTEGER REFERENCES users(id),
-        subscription_verified_at TIMESTAMP,
-        subscription_notes TEXT
+        locked_until TIMESTAMP
       )
     `);
-    console.log('✅ Users table created with subscription columns');
+    console.log('✅ Users table ready');
 
-    // Videos table with BYTEA storage
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -198,9 +261,8 @@ async function initDatabase() {
         is_active BOOLEAN DEFAULT true
       )
     `);
-    console.log('✅ Videos table created');
+    console.log('✅ Videos table ready');
 
-    // Comments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
@@ -210,9 +272,8 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Comments table created');
+    console.log('✅ Comments table ready');
 
-    // User actions table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
@@ -223,9 +284,8 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ User actions table created');
+    console.log('✅ User actions table ready');
 
-    // User logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
@@ -237,9 +297,8 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ User logs table created');
+    console.log('✅ User logs table ready');
 
-    // Website stats table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
@@ -251,31 +310,10 @@ async function initDatabase() {
         total_comments INTEGER DEFAULT 0
       )
     `);
-    console.log('✅ Website stats table created');
+    console.log('✅ Website stats table ready');
 
-    // Payment settings table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS payment_settings (
-        id SERIAL PRIMARY KEY,
-        bank_name VARCHAR(255),
-        account_number VARCHAR(100),
-        account_owner VARCHAR(255),
-        phone_number VARCHAR(50),
-        updated_by INTEGER REFERENCES users(id),
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ Payment settings table created');
-
-    // Insert default payment settings if empty
-    const paymentCheck = await pool.query('SELECT * FROM payment_settings');
-    if (paymentCheck.rows.length === 0) {
-      await pool.query(`
-        INSERT INTO payment_settings (bank_name, account_number, account_owner, phone_number)
-        VALUES ('Equity Bank', '1234567890', 'AKABAKUZE Platform', '+250 788 888 888')
-      `);
-      console.log('✅ Default payment settings created');
-    }
+    // ===== FIX: Add missing columns =====
+    await addMissingColumns();
 
     // ===== Super Admin from .env =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
@@ -335,7 +373,7 @@ const authenticate = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Get user
+    // Get user - SELECT subscription_status (it should exist now)
     const user = await pool.query(
       'SELECT id, username, role, subscription_status FROM users WHERE id = $1',
       [decoded.userId]
@@ -451,7 +489,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id, 
         username: user.username, 
         role: user.role,
-        subscription_status: user.subscription_status 
+        subscription_status: user.subscription_status || 'inactive'
       } 
     });
   } catch (error) {
@@ -483,7 +521,6 @@ app.post('/api/auth/heard-from', authenticate, async (req, res) => {
 
 // ============ SUBSCRIPTION ROUTES ============
 
-// Get subscription plans
 app.get('/api/subscription/plans', (req, res) => {
   res.json({
     plans: [
@@ -495,7 +532,6 @@ app.get('/api/subscription/plans', (req, res) => {
   });
 });
 
-// Get payment settings
 app.get('/api/subscription/payment-settings', async (req, res) => {
   try {
     const result = await pool.query('SELECT bank_name, account_number, account_owner, phone_number FROM payment_settings LIMIT 1');
@@ -513,7 +549,6 @@ app.get('/api/subscription/payment-settings', async (req, res) => {
   }
 });
 
-// Update payment settings (SuperAdmin only)
 app.put('/api/subscription/payment-settings', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { bank_name, account_number, account_owner, phone_number } = req.body;
@@ -537,17 +572,14 @@ app.put('/api/subscription/payment-settings', authenticate, authorize('super_adm
   }
 });
 
-// Request subscription
 app.post('/api/subscription/request', authenticate, async (req, res) => {
   try {
     const { plan } = req.body;
     
-    // Users cannot request subscription - only creators (admins)
     if (req.user.role !== 'admin' && req.user.role !== 'creator') {
       return res.status(403).json({ error: 'Only creators can request subscription' });
     }
     
-    // Check if user already has active subscription
     const userCheck = await pool.query(
       'SELECT subscription_status FROM users WHERE id = $1',
       [req.user.id]
@@ -557,7 +589,6 @@ app.post('/api/subscription/request', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'You already have an active subscription' });
     }
     
-    // Calculate end date based on plan
     const startDate = new Date();
     let endDate = new Date();
     let planName = '';
@@ -588,7 +619,6 @@ app.post('/api/subscription/request', authenticate, async (req, res) => {
         return res.status(400).json({ error: 'Invalid plan selected' });
     }
     
-    // Update user with pending subscription
     await pool.query(
       `UPDATE users SET 
         subscription_status = 'pending',
@@ -614,7 +644,6 @@ app.post('/api/subscription/request', authenticate, async (req, res) => {
   }
 });
 
-// Upload payment proof
 app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'), async (req, res) => {
   try {
     if (!req.file) {
@@ -647,7 +676,6 @@ app.post('/api/subscription/upload-proof', authenticate, upload.single('proof'),
   }
 });
 
-// Get subscription proof (SuperAdmin only)
 app.get('/api/subscription/proof/:userId', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -669,7 +697,6 @@ app.get('/api/subscription/proof/:userId', authenticate, authorize('super_admin'
   }
 });
 
-// Get pending subscriptions (SuperAdmin only)
 app.get('/api/subscription/pending', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -685,7 +712,6 @@ app.get('/api/subscription/pending', authenticate, authorize('super_admin'), asy
   }
 });
 
-// Verify subscription (SuperAdmin only)
 app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -728,7 +754,6 @@ app.post('/api/subscription/verify/:userId', authenticate, authorize('super_admi
   }
 });
 
-// Get subscription status
 app.get('/api/subscription/status', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
