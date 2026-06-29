@@ -30,8 +30,7 @@ for (const env of requiredEnv) {
   }
 }
 
-// Generate secure secrets if not provided
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+const JWT_SECRET = process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 12;
 const JWT_EXPIRY = '7d';
 
@@ -48,7 +47,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: { error: 'Too many login attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -57,7 +56,7 @@ const authLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 10,
+  max: 20,
   message: { error: 'Too many upload attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -75,7 +74,7 @@ const joinLimiter = rateLimit({
 
 // ============ SECURITY MIDDLEWARE ============
 
-// 1. Helmet Security Headers
+// 1. Helmet - with relaxed CSP for frontend to work
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -86,11 +85,13 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
       mediaSrc: ["'self'"],
       connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
     },
   },
-  crossOriginEmbedderPolicy: true,
-  crossOriginOpenerPolicy: true,
-  crossOriginResourcePolicy: { policy: "same-site" },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   dnsPrefetchControl: true,
   frameguard: { action: 'deny' },
   hidePoweredBy: true,
@@ -105,17 +106,17 @@ app.use(helmet({
   xssFilter: true,
 }));
 
-// 2. Strict CORS
+// 2. CORS - Allow all for now (configure as needed)
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
 
-// 3. Body Parsers with size limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 3. Body Parsers
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 app.use(cookieParser());
 app.use(compression());
 
@@ -141,13 +142,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 6. Request ID for tracking
-app.use((req, res, next) => {
-  req.requestId = crypto.randomBytes(16).toString('hex');
-  res.setHeader('X-Request-ID', req.requestId);
-  next();
-});
-
 // ============ APPLY RATE LIMITING ============
 app.use('/api/', limiter);
 app.use('/api/auth/login', authLimiter);
@@ -156,45 +150,32 @@ app.use('/api/videos/upload', uploadLimiter);
 app.use('/api/join/request', joinLimiter);
 
 // ============ STATIC FILES ============
-app.use('/uploads', express.static('uploads', {
-  maxAge: '1y',
-  immutable: true,
-  dotfiles: 'deny',
-}));
-app.use(express.static('public', {
-  maxAge: '1y',
-  immutable: true,
-  dotfiles: 'deny',
-}));
+app.use('/uploads', express.static('uploads'));
+app.use(express.static('public'));
 
 // ============ CREATE DIRECTORIES ============
 ['uploads', 'uploads/videos', 'uploads/thumbnails'].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER WITH SECURE VALIDATION ============
+// ============ MULTER ============
 const storage = multer.memoryStorage();
-
-const fileFilter = (req, file, cb) => {
-  const allowedVideo = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
-  const allowedImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  
-  if (file.fieldname === 'video' && !allowedVideo.includes(file.mimetype)) {
-    return cb(new Error('Invalid video format. Allowed: MP4, WebM, OGG, MOV, AVI'));
-  }
-  if ((file.fieldname === 'thumbnail' || file.fieldname === 'proof') && !allowedImage.includes(file.mimetype)) {
-    return cb(new Error('Invalid image format. Allowed: JPEG, PNG, GIF, WebP'));
-  }
-  cb(null, true);
-};
 
 const upload = multer({
   storage: storage,
-  limits: { 
-    fileSize: 500 * 1024 * 1024,
-    files: 2,
-  },
-  fileFilter: fileFilter,
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'video' && !file.mimetype.startsWith('video/')) {
+      return cb(new Error('Only video files allowed'));
+    }
+    if (file.fieldname === 'thumbnail' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files allowed'));
+    }
+    if (file.fieldname === 'proof' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files allowed for proof'));
+    }
+    cb(null, true);
+  }
 });
 
 // ============ DATABASE CONNECTION ============
@@ -205,14 +186,9 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT) || 5432,
   database: process.env.DB_NAME,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
   max: 20,
   idleTimeoutMillis: 30000,
-  statement_timeout: 30000,
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Database pool error:', err);
 });
 
 pool.connect((err, client, release) => {
@@ -263,7 +239,6 @@ async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
-    // Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -277,7 +252,6 @@ async function initDatabase() {
     `);
     console.log('✅ Users table ready');
 
-    // Videos table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -296,26 +270,22 @@ async function initDatabase() {
         share_count INTEGER DEFAULT 0,
         file_size INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT true,
-        video_hash VARCHAR(64)
+        is_active BOOLEAN DEFAULT true
       )
     `);
-    console.log('✅ Videos table created with BYTEA storage');
+    console.log('✅ Videos table created');
 
-    // Comments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
         username VARCHAR(255) NOT NULL,
         comment TEXT NOT NULL,
-        is_approved BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✅ Comments table ready');
 
-    // User actions table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
@@ -328,7 +298,6 @@ async function initDatabase() {
     `);
     console.log('✅ User actions table ready');
 
-    // User logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
@@ -342,7 +311,6 @@ async function initDatabase() {
     `);
     console.log('✅ User logs table ready');
 
-    // Website stats table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
@@ -356,7 +324,6 @@ async function initDatabase() {
     `);
     console.log('✅ Website stats table ready');
 
-    // Payment settings table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payment_settings (
         id SERIAL PRIMARY KEY,
@@ -370,7 +337,6 @@ async function initDatabase() {
     `);
     console.log('✅ Payment settings table ready');
 
-    // Join Requests table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS join_requests (
         id SERIAL PRIMARY KEY,
@@ -391,7 +357,6 @@ async function initDatabase() {
     `);
     console.log('✅ Join requests table ready');
 
-    // Security logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS security_logs (
         id SERIAL PRIMARY KEY,
@@ -407,7 +372,7 @@ async function initDatabase() {
 
     await ensureAllColumns();
 
-    // ===== CREATE SUPER ADMIN =====
+    // Create Super Admin
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
     const adminPassword = process.env.ADMIN_PASSWORD || '08800+_+Owner!';
     const adminSecret = process.env.ADMIN_SECRET || 'ADMIN_SECRET_2024';
@@ -417,14 +382,13 @@ async function initDatabase() {
       const hashedPassword = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
       const hashedSecret = await bcrypt.hash(adminSecret, BCRYPT_ROUNDS);
       await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, heard_from, is_approved, full_name, is_verified) 
-         VALUES ($1, $2, $3, 'super_admin', 'system', true, 'Super Administrator', true)`,
+        `INSERT INTO users (username, password, secret_code, role, heard_from, is_approved, full_name) 
+         VALUES ($1, $2, $3, 'super_admin', 'system', true, 'Super Administrator')`,
         [adminUsername, hashedPassword, hashedSecret]
       );
       console.log('✅ Super Admin created');
     }
 
-    // Payment settings
     const paymentCheck = await pool.query('SELECT * FROM payment_settings');
     if (paymentCheck.rows.length === 0) {
       await pool.query(`
@@ -433,7 +397,6 @@ async function initDatabase() {
       `);
     }
 
-    // Stats
     const statsCheck = await pool.query('SELECT * FROM website_stats');
     if (statsCheck.rows.length === 0) {
       await pool.query(`
@@ -478,53 +441,36 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      await logSecurityEvent('auth_failure', { reason: 'no_token' }, req);
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
     
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      
-      const user = await pool.query(
-        `SELECT id, username, role, is_approved, subscription_end,
-                CASE 
-                  WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
-                  THEN (subscription_end - CURRENT_DATE)
-                  ELSE 0 
-                END as days_remaining
-         FROM users WHERE id = $1`,
-        [decoded.userId]
-      );
-      
-      if (!user.rows.length) {
-        await logSecurityEvent('auth_failure', { reason: 'user_not_found' }, req);
-        return res.status(401).json({ error: 'User not found' });
-      }
-      
-      if (!user.rows[0].is_approved) {
-        await logSecurityEvent('auth_failure', { reason: 'not_approved' }, req);
-        return res.status(403).json({ error: 'Account not approved' });
-      }
-      
-      req.user = user.rows[0];
-      await logSecurityEvent('auth_success', { userId: req.user.id }, req);
-      next();
-    } catch (jwtError) {
-      if (jwtError.name === 'TokenExpiredError') {
-        await logSecurityEvent('auth_failure', { reason: 'token_expired' }, req);
-        return res.status(401).json({ error: 'Token expired' });
-      }
-      if (jwtError.name === 'JsonWebTokenError') {
-        await logSecurityEvent('auth_failure', { reason: 'invalid_token' }, req);
-        return res.status(401).json({ error: 'Invalid token' });
-      }
-      throw jwtError;
+    const user = await pool.query(
+      `SELECT id, username, role, is_approved, subscription_end,
+              CASE 
+                WHEN subscription_end IS NOT NULL AND subscription_end > CURRENT_DATE 
+                THEN (subscription_end - CURRENT_DATE)
+                ELSE 0 
+              END as days_remaining
+       FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
+    
+    if (!user.rows.length) {
+      return res.status(401).json({ error: 'User not found' });
     }
+    
+    req.user = user.rows[0];
+    next();
   } catch (error) {
-    console.error('Auth error:', error);
-    await logSecurityEvent('auth_error', { error: error.message }, req);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
     return res.status(401).json({ error: 'Authentication failed' });
   }
 };
@@ -533,19 +479,12 @@ const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     if (!roles.includes(req.user.role)) {
-      logSecurityEvent('auth_failure', { 
-        reason: 'insufficient_permissions',
-        userId: req.user.id,
-        role: req.user.role,
-        required: roles 
-      }, req);
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
     next();
   };
 };
 
-// ============ LOG USER ACTIVITY ============
 async function logUserActivity(userId, action, details, req) {
   try {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -575,7 +514,6 @@ const isValidEmail = (email) => {
 
 // ============ AUTH ROUTES ============
 
-// ============ REGISTER ============
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
@@ -588,8 +526,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username must be at least 3 characters' });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
     if (secretCode.length < 4) {
@@ -605,8 +543,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     const hashedSecret = await bcrypt.hash(secretCode, BCRYPT_ROUNDS);
 
     const result = await pool.query(
-      `INSERT INTO users (username, password, secret_code, role, is_approved, is_verified) 
-       VALUES ($1, $2, $3, 'user', true, true) 
+      `INSERT INTO users (username, password, secret_code, role, is_approved) 
+       VALUES ($1, $2, $3, 'user', true) 
        RETURNING id, username, role`,
       [username, hashedPassword, hashedSecret]
     );
@@ -617,8 +555,6 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       { expiresIn: JWT_EXPIRY }
     );
 
-    await logSecurityEvent('registration_success', { userId: result.rows[0].id }, req);
-
     res.json({
       token,
       user: result.rows[0],
@@ -626,12 +562,10 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error);
-    await logSecurityEvent('registration_error', { error: error.message }, req);
     res.status(500).json({ error: 'Registration failed: ' + error.message });
   }
 });
 
-// ============ LOGIN ============
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -652,15 +586,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     );
 
     if (user.rows.length === 0) {
-      await logSecurityEvent('login_failure', { reason: 'user_not_found' }, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const userData = user.rows[0];
 
-    // Check account lockout
     if (userData.locked_until && new Date(userData.locked_until) > new Date()) {
-      await logSecurityEvent('login_failure', { reason: 'account_locked' }, req);
       return res.status(403).json({ 
         error: `Account locked. Try again after ${new Date(userData.locked_until).toLocaleString()}`
       });
@@ -680,18 +611,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         [attempts, lockUntil, userData.id]
       );
 
-      await logSecurityEvent('login_failure', { 
-        reason: 'invalid_password',
-        attempts 
-      }, req);
-
       return res.status(401).json({ 
         error: 'Invalid credentials',
         attemptsRemaining: Math.max(0, 5 - attempts)
       });
     }
 
-    // Reset login attempts on success
     await pool.query(
       `UPDATE users SET 
         login_attempts = 0, 
@@ -708,8 +633,6 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       { expiresIn: JWT_EXPIRY }
     );
 
-    await logSecurityEvent('login_success', { userId: userData.id }, req);
-
     res.json({
       token,
       user: {
@@ -723,12 +646,10 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    await logSecurityEvent('login_error', { error: error.message }, req);
     res.status(500).json({ error: 'Login failed: ' + error.message });
   }
 });
 
-// ============ GET CURRENT USER ============
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
     const user = await pool.query(
@@ -748,17 +669,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
-// ============ LOGOUT ============
-app.post('/api/auth/logout', authenticate, async (req, res) => {
-  try {
-    await logSecurityEvent('logout_success', { userId: req.user.id }, req);
-    res.json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Logout failed' });
-  }
-});
-
-// ============ JOIN US - REQUEST CREATOR ACCOUNT ============
+// ============ JOIN US ============
 app.post('/api/join/request', upload.single('proof'), async (req, res) => {
   try {
     const { fullName, phoneNumber, email, plan } = req.body;
@@ -826,7 +737,6 @@ app.post('/api/join/request', upload.single('proof'), async (req, res) => {
   }
 });
 
-// ============ GET PENDING JOIN REQUESTS ============
 app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -843,7 +753,6 @@ app.get('/api/admin/join-requests', authenticate, authorize('super_admin'), asyn
   }
 });
 
-// ============ GET PROOF IMAGE ============
 app.get('/api/admin/proof/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
@@ -863,7 +772,6 @@ app.get('/api/admin/proof/:id', authenticate, authorize('super_admin'), async (r
   }
 });
 
-// ============ PROCESS JOIN REQUEST ============
 app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
@@ -897,8 +805,8 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
         return res.status(400).json({ error: 'Username must be at least 3 characters' });
       }
 
-      if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
 
       if (secretCode.length < 4) {
@@ -921,8 +829,8 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
       }
 
       const userResult = await pool.query(
-        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, subscription_end, is_approved, is_verified) 
-         VALUES ($1, $2, $3, 'creator', $4, $5, $6, true, true) 
+        `INSERT INTO users (username, password, secret_code, role, full_name, phone_number, subscription_end, is_approved) 
+         VALUES ($1, $2, $3, 'creator', $4, $5, $6, true) 
          RETURNING id, username, role`,
         [username, hashedPassword, hashedSecret, request.full_name, request.phone_number, subscriptionEnd]
       );
@@ -963,7 +871,7 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
   }
 });
 
-// ============ SUPER ADMIN DASHBOARD STATS ============
+// ============ ADMIN STATS ============
 app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userStats = await pool.query(`
@@ -1057,7 +965,6 @@ app.get('/api/admin/super-stats', authenticate, authorize('super_admin'), async 
   }
 });
 
-// ============ GET ALL USERS (Admin) ============
 app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -1078,7 +985,6 @@ app.get('/api/admin/users', authenticate, authorize('super_admin'), async (req, 
   }
 });
 
-// ============ DELETE USER (Admin only) ============
 app.delete('/api/admin/users/:id', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -1096,7 +1002,6 @@ app.delete('/api/admin/users/:id', authenticate, authorize('super_admin'), async
       return res.status(403).json({ error: 'Cannot delete another super admin' });
     }
 
-    // Clean up references
     await pool.query('UPDATE join_requests SET user_id = NULL, processed_by = NULL WHERE user_id = $1 OR processed_by = $1', [userId]);
     await pool.query('DELETE FROM videos WHERE uploader_id = $1', [userId]);
     await pool.query('DELETE FROM comments WHERE username IN (SELECT username FROM users WHERE id = $1)', [userId]);
@@ -1112,7 +1017,6 @@ app.delete('/api/admin/users/:id', authenticate, authorize('super_admin'), async
   }
 });
 
-// ============ UPDATE SUBSCRIPTION (Admin) ============
 app.put('/api/admin/users/:id/subscription', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -1199,7 +1103,6 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
-// ============ CHECK SUBSCRIPTION ============
 const checkSubscription = async (userId) => {
   const result = await pool.query(
     `SELECT subscription_end 
@@ -1210,13 +1113,11 @@ const checkSubscription = async (userId) => {
   return result.rows.length > 0;
 };
 
-// ============ UPLOAD VIDEO ============
 app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin'), upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    // Check subscription for creators
     if (req.user.role === 'creator') {
       const hasSubscription = await checkSubscription(req.user.id);
       if (!hasSubscription) {
@@ -1239,13 +1140,10 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
     const videoFile = req.files['video'][0];
     const thumbnailFile = req.files['thumbnail'] ? req.files['thumbnail'][0] : null;
 
-    // Generate video hash for integrity
-    const videoHash = crypto.createHash('sha256').update(videoFile.buffer).digest('hex');
-
     const result = await pool.query(
       `INSERT INTO videos (title, description, video_data, video_mimetype, video_filename, 
-                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size, video_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                           thumbnail_data, thumbnail_mimetype, uploader_id, uploader_name, file_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id, title, description, created_at`,
       [
         title,
@@ -1257,8 +1155,7 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
         thumbnailFile ? thumbnailFile.mimetype : null,
         req.user.id,
         req.user.username,
-        videoFile.size,
-        videoHash
+        videoFile.size
       ]
     );
 
@@ -1282,7 +1179,6 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   }
 });
 
-// ============ STREAM VIDEO WITH RANGE SUPPORT ============
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1291,7 +1187,7 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT video_data, video_mimetype, video_hash FROM videos WHERE id = $1 AND is_active = true',
+      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
 
@@ -1303,10 +1199,6 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     const videoData = video.video_data;
     const videoSize = videoData.length;
     const mimeType = video.video_mimetype || 'video/mp4';
-
-    // Set security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; media-src 'self'");
 
     const range = req.headers.range;
     
@@ -1339,7 +1231,6 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   }
 });
 
-// ============ GET THUMBNAIL ============
 app.get('/api/videos/:id/thumbnail', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1365,7 +1256,6 @@ app.get('/api/videos/:id/thumbnail', async (req, res) => {
   }
 });
 
-// ============ GET VIDEO DETAILS ============
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1404,7 +1294,6 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
-// ============ UPDATE VIDEO ============
 app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1432,7 +1321,6 @@ app.put('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), as
   }
 });
 
-// ============ DELETE VIDEO ============
 app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'), async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1455,7 +1343,6 @@ app.delete('/api/videos/:id', authenticate, authorize('creator', 'super_admin'),
   }
 });
 
-// ============ LIKE VIDEO ============
 app.post('/api/videos/:id/like', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1472,7 +1359,6 @@ app.post('/api/videos/:id/like', async (req, res) => {
   }
 });
 
-// ============ COMMENT ============
 app.post('/api/videos/:id/comment', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1482,7 +1368,6 @@ app.post('/api/videos/:id/comment', async (req, res) => {
       return res.status(400).json({ error: 'Name and comment required' });
     }
 
-    // Sanitize comment
     const sanitizedComment = xss(comment.trim());
     const sanitizedUsername = xss(username.trim());
 
@@ -1500,7 +1385,6 @@ app.post('/api/videos/:id/comment', async (req, res) => {
   }
 });
 
-// ============ SHARE ============
 app.post('/api/videos/:id/share', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1514,7 +1398,7 @@ app.post('/api/videos/:id/share', async (req, res) => {
 
 // ============ HEALTH CHECK ============
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok' });
 });
 
 // ============ SERVE FRONTEND ============
@@ -1525,8 +1409,7 @@ app.get('*', (req, res) => {
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  // Don't expose internal errors
-  res.status(500).json({ error: 'Something went wrong. Please try again later.' });
+  res.status(500).json({ error: 'Something went wrong: ' + err.message });
 });
 
 // ============ START SERVER ============
