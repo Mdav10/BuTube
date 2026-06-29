@@ -7,12 +7,14 @@
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/butube-icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BuTube">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ff6b6b">
+    <meta name="msapplication-TileColor" content="#ff6b6b">
+    <meta name="msapplication-TileImage" content="/icons/butube-icon-144.png">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -86,7 +88,7 @@
         /* ===== INSTALL APP BUTTON ===== */
         .install-btn-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             right: 20px;
             z-index: 9997;
             display: flex;
@@ -100,17 +102,19 @@
             color: #fff;
             border: none;
             border-radius: 50px;
-            padding: 14px 24px;
-            font-size: 0.9rem;
+            padding: 16px 28px;
+            font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 10px 40px rgba(255,107,107,0.4);
+            box-shadow: 0 10px 40px rgba(255,107,107,0.5);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             animation: bounceIn 0.8s ease;
             position: relative;
+            min-width: 160px;
+            justify-content: center;
         }
 
         .install-btn:hover {
@@ -118,25 +122,109 @@
             box-shadow: 0 15px 50px rgba(255,107,107,0.6);
         }
 
-        .install-btn i { font-size: 1.2rem; }
+        .install-btn i { font-size: 1.4rem; }
         .install-btn .badge {
             position: absolute;
-            top: -8px;
-            right: -8px;
+            top: -10px;
+            right: -10px;
             background: #00b894;
             color: #fff;
-            font-size: 0.6rem;
-            padding: 2px 8px;
+            font-size: 0.65rem;
+            padding: 3px 10px;
             border-radius: 50px;
             animation: pulseBadge 2s ease-in-out infinite;
         }
-        @keyframes pulseBadge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        @keyframes pulseBadge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
         @keyframes bounceIn {
             0% { opacity: 0; transform: scale(0.5); }
             60% { opacity: 1; transform: scale(1.1); }
             100% { transform: scale(1); }
         }
         .install-btn.hidden { display: none !important; }
+
+        /* ===== DOWNLOAD PROGRESS OVERLAY ===== */
+        .download-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 999998;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .download-overlay.show { display: flex; }
+        .download-overlay .download-box {
+            background: #1a1a1a;
+            padding: 40px 50px;
+            border-radius: 24px;
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            text-align: center;
+        }
+        .download-overlay .download-box .icon {
+            font-size: 3.5rem;
+            color: #ff6b6b;
+            margin-bottom: 16px;
+        }
+        .download-overlay .download-box h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .download-overlay .download-box p {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .download-overlay .download-box .progress-wrapper {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50px;
+            overflow: hidden;
+            height: 12px;
+            position: relative;
+        }
+        .download-overlay .download-box .progress-wrapper .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+            border-radius: 50px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .download-overlay .download-box .progress-text {
+            margin-top: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ff6b6b;
+        }
+        .download-overlay .download-box .progress-details {
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        .download-overlay .download-box .btn-close-download {
+            margin-top: 20px;
+            padding: 10px 30px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .download-overlay .download-box .btn-close-download:hover {
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
+        }
 
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -152,6 +240,20 @@
         .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .nav-links a.active { color: #fff; background: rgba(255,107,107,0.15); }
         .nav-links .user-info { color: #ff6b6b; font-weight: 600; margin-right: 4px; font-size: 0.7rem; }
+        .nav-links .nav-install {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff !important;
+            font-weight: 700 !important;
+            padding: 4px 14px !important;
+            border-radius: 50px !important;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            animation: pulseBtn 2s ease-in-out infinite;
+        }
+        @keyframes pulseBtn { 0%, 100% { box-shadow: 0 0 20px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,107,0.6); } }
 
         .subscription-badge { background: rgba(255,107,107,0.2); color: #ff6b6b; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; }
         .subscription-badge.expired { background: rgba(255,0,0,0.2); color: #ff4444; }
@@ -236,13 +338,13 @@
         .my-video-card .info .meta { font-size: 0.75rem; color: #888; display: flex; gap: 10px; flex-wrap: wrap; }
         .my-video-card .info .meta span { display: flex; align-items: center; gap: 4px; }
         .my-video-card .card-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.05); }
-        .my-video-card .card-actions button { flex: 1; padding: 6px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; }
+        .my-video-card .card-actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; position: relative; }
         .my-video-card .card-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
         .my-video-card .card-actions .btn-edit { background: rgba(255,165,0,0.2); color: #ffa500; }
         .my-video-card .card-actions .btn-edit:hover:not(:disabled) { background: rgba(255,165,0,0.4); }
         .my-video-card .card-actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
         .my-video-card .card-actions .btn-delete:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
-        .my-video-card .card-actions .btn-download { background: rgba(52,152,219,0.2); color: #3498db; }
+        .my-video-card .card-actions .btn-download { background: rgba(52,152,219,0.25); color: #3498db; border: 1px solid rgba(52,152,219,0.2); }
         .my-video-card .card-actions .btn-download:hover:not(:disabled) { background: rgba(52,152,219,0.4); }
 
         .admin-container { padding: 15px 0; max-width: 1400px; margin: 0 auto; }
@@ -318,9 +420,32 @@
         .player-info h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
         .player-info .desc { color: #aaa; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.5; }
         .player-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-        .player-actions button { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: rgba(255,255,255,0.04); color: #fff; cursor: pointer; transition: all 0.3s ease; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 4px; position: relative; }
-        .player-actions button:hover:not(:disabled) { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+        .player-actions button { 
+            padding: 8px 16px; 
+            border: 1px solid rgba(255,255,255,0.08); 
+            border-radius: 50px; 
+            background: rgba(255,255,255,0.04); 
+            color: #fff; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-size: 0.85rem; 
+            font-weight: 500; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            position: relative; 
+        }
+        .player-actions button:hover:not(:disabled) { background: rgba(255,255,255,0.12); transform: translateY(-2px); }
         .player-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .player-actions .btn-download-player { 
+            background: rgba(52,152,219,0.25); 
+            color: #3498db; 
+            border-color: rgba(52,152,219,0.3);
+        }
+        .player-actions .btn-download-player:hover:not(:disabled) { 
+            background: rgba(52,152,219,0.4); 
+            transform: scale(1.05);
+        }
         .close-player { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; transition: all 0.3s ease; z-index: 10; }
         .close-player:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
         .comments-section { margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; }
@@ -404,9 +529,11 @@
             .bank-details p { flex-direction: column; gap: 2px; }
             .splash-logo { font-size: 2rem; }
             .splash-logo i { font-size: 2.5rem; }
-            .install-btn-container { bottom: 16px; right: 16px; }
-            .install-btn { padding: 12px 18px; font-size: 0.8rem; }
+            .install-btn-container { bottom: 16px; right: 10px; }
+            .install-btn { padding: 12px 20px; font-size: 0.85rem; min-width: 130px; }
+            .install-btn i { font-size: 1.1rem; }
             .my-videos-grid { grid-template-columns: 1fr; }
+            .download-overlay .download-box { padding: 30px 20px; margin: 20px; }
         }
 
         @media (max-width: 480px) {
@@ -416,9 +543,12 @@
             .admin-stat-card .label { font-size: 0.7rem; }
             .admin-stat-card .icon { font-size: 1.2rem; }
             .subscription-plans { grid-template-columns: 1fr; }
-            .install-btn-container { bottom: 12px; right: 12px; }
-            .install-btn { padding: 10px 14px; font-size: 0.75rem; }
+            .install-btn-container { bottom: 12px; right: 8px; }
+            .install-btn { padding: 10px 16px; font-size: 0.75rem; min-width: 100px; }
             .install-btn i { font-size: 1rem; }
+            .install-btn .badge { font-size: 0.5rem; padding: 2px 6px; top: -8px; right: -8px; }
+            .download-overlay .download-box .icon { font-size: 2.5rem; }
+            .download-overlay .download-box h3 { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -435,6 +565,21 @@
         </div>
         <div class="splash-subtitle">Share, Watch, Connect</div>
         <div class="splash-loading-text">Loading...</div>
+    </div>
+
+    <!-- Download Progress Overlay -->
+    <div class="download-overlay" id="downloadOverlay">
+        <div class="download-box">
+            <div class="icon"><i class="fas fa-download"></i></div>
+            <h3>Downloading Video</h3>
+            <p id="downloadFileName">Please wait...</p>
+            <div class="progress-wrapper">
+                <div class="progress-fill" id="downloadProgressFill"></div>
+            </div>
+            <div class="progress-text" id="downloadProgressText">0%</div>
+            <div class="progress-details" id="downloadProgressDetails">Preparing...</div>
+            <button class="btn-close-download" onclick="closeDownloadOverlay()">Close</button>
+        </div>
     </div>
 
     <!-- Install App - Floating Button -->
@@ -462,6 +607,7 @@
                 <a id="navAdmin" class="hidden" onclick="showAdmin()"><i class="fas fa-crown"></i> Admin</a>
                 <a id="navJoin" onclick="showJoin()"><i class="fas fa-user-plus"></i> Join Us</a>
                 <a id="navSubscription" onclick="showSubscription()"><i class="fas fa-crown"></i> Subscribe</a>
+                <a id="navInstall" class="nav-install" onclick="installApp()"><i class="fas fa-download"></i> Install</a>
                 <a id="navLogin" onclick="showAuth('login')"><i class="fas fa-sign-in-alt"></i> Login</a>
                 <a id="navRegister" onclick="showAuth('register')"><i class="fas fa-user"></i> Register</a>
                 <a id="navLogout" class="hidden" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -662,7 +808,7 @@
                     <button id="likeBtn" onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
                     <button id="dislikeBtn" onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
                     <button id="shareBtn" onclick="shareVideo()"><i class="fas fa-share"></i> <span id="shareCount">0</span></button>
-                    <button id="downloadBtn" onclick="downloadVideo()" style="background:rgba(52,152,219,0.2); color:#3498db; border-color:rgba(52,152,219,0.3);"><i class="fas fa-download"></i> Download</button>
+                    <button id="downloadBtn" class="btn-download-player" onclick="downloadVideo()"><i class="fas fa-download"></i> Download</button>
                     <span style="color:#888;"><i class="fas fa-eye"></i> <span id="viewCount">0</span></span>
                 </div>
                 <div class="comments-section">
@@ -717,6 +863,7 @@
             e.preventDefault();
             deferredPrompt = e;
             document.getElementById('floatingInstallBtn').style.display = 'flex';
+            document.getElementById('navInstall').style.display = 'flex';
         });
 
         async function installApp() {
@@ -726,20 +873,51 @@
                 if (result.outcome === 'accepted') {
                     showToast('App installed successfully! 🎉');
                     document.getElementById('floatingInstallBtn').style.display = 'none';
+                    document.getElementById('navInstall').style.display = 'none';
                 } else {
                     showToast('Installation cancelled', 'error');
                 }
                 deferredPrompt = null;
             } else {
-                showToast('Tap the menu button and select "Add to Home Screen"', 'success');
+                // Show download overlay for manual installation
+                showDownloadProgress('BuTube App', 'Installing...', 0);
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            closeDownloadOverlay();
+                            showToast('Tap the menu button and select "Add to Home Screen"', 'success');
+                        }, 500);
+                    }
+                    updateDownloadProgress(Math.round(progress), 'Installing...');
+                }, 300);
             }
         }
 
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            document.getElementById('floatingInstallBtn').style.display = 'none';
+        // ===== DOWNLOAD PROGRESS OVERLAY FUNCTIONS =====
+        function showDownloadProgress(filename, status, progress) {
+            const overlay = document.getElementById('downloadOverlay');
+            document.getElementById('downloadFileName').textContent = filename;
+            document.getElementById('downloadProgressDetails').textContent = status;
+            document.getElementById('downloadProgressFill').style.width = progress + '%';
+            document.getElementById('downloadProgressText').textContent = progress + '%';
+            overlay.classList.add('show');
         }
 
-        document.getElementById('floatingInstallBtn').style.display = 'flex';
+        function updateDownloadProgress(progress, status) {
+            document.getElementById('downloadProgressFill').style.width = progress + '%';
+            document.getElementById('downloadProgressText').textContent = progress + '%';
+            if (status) {
+                document.getElementById('downloadProgressDetails').textContent = status;
+            }
+        }
+
+        function closeDownloadOverlay() {
+            document.getElementById('downloadOverlay').classList.remove('show');
+        }
 
         // ===== HIDE SPLASH SCREEN =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -1109,41 +1287,136 @@
             renderVideos(allVideos);
         }
 
-        // ===== DOWNLOAD VIDEO FUNCTION =====
+        // ===== DOWNLOAD VIDEO FUNCTION WITH PROGRESS =====
         async function downloadVideo() {
             if (!currentVideoId) {
                 showToast('No video selected', 'error');
                 return;
             }
 
-            try {
-                const btn = document.getElementById('downloadBtn');
-                btn.classList.add('btn-loading');
-                btn.disabled = true;
+            const btn = document.getElementById('downloadBtn');
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
 
+            const title = document.getElementById('playerTitle').textContent || 'video';
+            const filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.mp4';
+
+            showDownloadProgress(filename, 'Starting download...', 0);
+
+            try {
                 const response = await fetch(API + '/videos/' + currentVideoId + '/download');
-                if (!response.ok) throw new Error('Download failed');
                 
-                const blob = await response.blob();
+                if (!response.ok) throw new Error('Download failed');
+
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+
+                const reader = response.body.getReader();
+                const chunks = [];
+                let loaded = 0;
+
+                updateDownloadProgress(0, 'Downloading...');
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    loaded += value.length;
+                    
+                    if (total) {
+                        const percent = Math.round((loaded / total) * 100);
+                        updateDownloadProgress(percent, 'Downloading...');
+                    }
+                }
+
+                const blob = new Blob(chunks);
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                
-                const title = document.getElementById('playerTitle').textContent || 'video';
-                a.download = title + '.mp4';
-                
+                a.download = filename;
+                a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
                 
-                showToast('Download started! 📥');
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                updateDownloadProgress(100, 'Complete!');
+                setTimeout(() => {
+                    closeDownloadOverlay();
+                    showToast('Download complete! 📥', 'success');
+                }, 800);
+
             } catch (error) {
+                closeDownloadOverlay();
                 showToast('Download failed: ' + error.message, 'error');
             } finally {
-                const btn = document.getElementById('downloadBtn');
                 btn.classList.remove('btn-loading');
                 btn.disabled = false;
+            }
+        }
+
+        // Download from My Videos
+        async function downloadMyVideo(id) {
+            const video = allVideos.find(v => v.id === id);
+            const title = video ? video.title : 'video';
+            const filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.mp4';
+
+            showDownloadProgress(filename, 'Starting download...', 0);
+
+            try {
+                const response = await fetch(API + '/videos/' + id + '/download');
+                
+                if (!response.ok) throw new Error('Download failed');
+
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+
+                const reader = response.body.getReader();
+                const chunks = [];
+                let loaded = 0;
+
+                updateDownloadProgress(0, 'Downloading...');
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    loaded += value.length;
+                    
+                    if (total) {
+                        const percent = Math.round((loaded / total) * 100);
+                        updateDownloadProgress(percent, 'Downloading...');
+                    }
+                }
+
+                const blob = new Blob(chunks);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                updateDownloadProgress(100, 'Complete!');
+                setTimeout(() => {
+                    closeDownloadOverlay();
+                    showToast('Download complete! 📥', 'success');
+                }, 800);
+
+            } catch (error) {
+                closeDownloadOverlay();
+                showToast('Download failed: ' + error.message, 'error');
             }
         }
 
@@ -1431,31 +1704,6 @@
                 `).join('');
             } catch (error) {
                 grid.innerHTML = `<p style="text-align:center;color:#666;padding:40px;">Failed to load: ${error.message}</p>`;
-            }
-        }
-
-        // Download from My Videos
-        async function downloadMyVideo(id) {
-            try {
-                const response = await fetch(API + '/videos/' + id + '/download');
-                if (!response.ok) throw new Error('Download failed');
-                
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                
-                // Find video title
-                const video = allVideos.find(v => v.id === id);
-                a.download = (video ? video.title : 'video') + '.mp4';
-                
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                showToast('Download started! 📥');
-            } catch (error) {
-                showToast('Download failed: ' + error.message, 'error');
             }
         }
 
