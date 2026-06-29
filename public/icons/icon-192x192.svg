@@ -3,11 +3,18 @@
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#ee5a24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ee5a24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect width="192" height="192" rx="38.400000000000006" fill="url(#grad)"/>
-  <text x="50%" y="105.60000000000001" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-weight="bold" font-size="67.19999999999999">BuTube</text>
-  <circle cx="96" cy="163.2" r="7.68" fill="white" opacity="0.3"/>
-  <circle cx="96" cy="163.2" r="3.84" fill="white" opacity="0.5"/>
+  
+  <rect width="192" height="192" rx="42" ry="42" fill="url(#grad)"/>
+  
+  <g transform="translate(96, 87)">
+    <polygon points="-57,-86 86,0 -57,86" fill="white"/>
+  </g>
+  
+  <text x="96" y="168" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-weight="bold" font-size="34">
+    Bu
+  </text>
 </svg>
