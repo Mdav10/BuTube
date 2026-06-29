@@ -126,6 +126,102 @@
             50% { opacity: 1; }
         }
 
+        /* ===== INSTALL APP BANNER ===== */
+        .install-banner {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            padding: 16px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,107,107,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+            z-index: 99998;
+            max-width: 90%;
+            width: 500px;
+            align-items: center;
+            gap: 16px;
+            animation: slideUpBanner 0.5s ease;
+        }
+
+        .install-banner.show {
+            display: flex;
+        }
+
+        @keyframes slideUpBanner {
+            from {
+                transform: translateX(-50%) translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .install-banner .icon {
+            font-size: 2.5rem;
+            color: #ff6b6b;
+            flex-shrink: 0;
+        }
+
+        .install-banner .content {
+            flex: 1;
+        }
+
+        .install-banner .content h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .install-banner .content p {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .install-banner .actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .install-banner .actions .btn-install {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .install-banner .actions .btn-install:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(255,107,107,0.3);
+        }
+
+        .install-banner .actions .btn-dismiss {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .install-banner .actions .btn-dismiss:hover {
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+
         /* ===== SCROLLING BAR ===== */
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -394,6 +490,9 @@
             .bank-details p { flex-direction: column; gap: 2px; }
             .splash-logo { font-size: 2rem; }
             .splash-logo i { font-size: 2.5rem; }
+            .install-banner { flex-direction: column; text-align: center; padding: 16px; }
+            .install-banner .actions { width: 100%; justify-content: center; }
+            .install-banner .icon { font-size: 2rem; }
         }
 
         @media (max-width: 480px) {
@@ -403,6 +502,8 @@
             .admin-stat-card .label { font-size: 0.7rem; }
             .admin-stat-card .icon { font-size: 1.2rem; }
             .subscription-plans { grid-template-columns: 1fr; }
+            .install-banner .actions .btn-install { padding: 6px 16px; font-size: 0.8rem; }
+            .install-banner .actions .btn-dismiss { padding: 6px 12px; font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -419,6 +520,25 @@
         </div>
         <div class="splash-subtitle">Share, Watch, Connect</div>
         <div class="splash-loading-text">Loading...</div>
+    </div>
+
+    <!-- Install App Banner -->
+    <div class="install-banner" id="installBanner">
+        <div class="icon">
+            <i class="fas fa-download"></i>
+        </div>
+        <div class="content">
+            <h4>Install BuTube App</h4>
+            <p>Get the full experience with our mobile app</p>
+        </div>
+        <div class="actions">
+            <button class="btn-install" id="installBtn" onclick="installApp()">
+                <i class="fas fa-download"></i> Install
+            </button>
+            <button class="btn-dismiss" onclick="dismissInstall()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
     </div>
 
     <div class="scrolling-bar">
@@ -684,6 +804,48 @@
     </div>
 
     <script>
+        // ===== PWA INSTALLATION =====
+        let deferredPrompt = null;
+
+        // Listen for beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner').classList.add('show');
+        });
+
+        // Install app function
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                if (result.outcome === 'accepted') {
+                    showToast('App installed successfully! 🎉');
+                    document.getElementById('installBanner').classList.remove('show');
+                } else {
+                    showToast('Installation cancelled', 'error');
+                }
+                deferredPrompt = null;
+            }
+        }
+
+        // Dismiss install banner
+        function dismissInstall() {
+            document.getElementById('installBanner').classList.remove('show');
+            localStorage.setItem('dismissedInstall', 'true');
+        }
+
+        // Check if user dismissed before
+        if (localStorage.getItem('dismissedInstall') === 'true') {
+            document.getElementById('installBanner').classList.remove('show');
+        }
+
+        // Also show banner if app is not installed and user hasn't dismissed
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installBanner').classList.remove('show');
+            showToast('Thank you for installing BuTube! 🎉');
+        });
+
         // ===== HIDE SPLASH SCREEN =====
         document.addEventListener('DOMContentLoaded', () => {
             const splash = document.getElementById('splashScreen');
