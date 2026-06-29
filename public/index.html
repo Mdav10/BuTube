@@ -38,12 +38,7 @@
             z-index: 999999;
             transition: opacity 0.6s ease;
         }
-
-        .splash-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
+        .splash-screen.hidden { opacity: 0; pointer-events: none; }
         .splash-logo {
             font-size: 3rem;
             font-weight: 900;
@@ -56,24 +51,9 @@
             align-items: center;
             gap: 12px;
         }
-
-        .splash-logo i {
-            -webkit-text-fill-color: #ff6b6b;
-            font-size: 3.5rem;
-        }
-
-        .splash-loader {
-            width: 70px;
-            height: 70px;
-            position: relative;
-        }
-
-        .splash-loader svg {
-            animation: rotate 2s linear infinite;
-            width: 70px;
-            height: 70px;
-        }
-
+        .splash-logo i { -webkit-text-fill-color: #ff6b6b; font-size: 3.5rem; }
+        .splash-loader { width: 70px; height: 70px; position: relative; }
+        .splash-loader svg { animation: rotate 2s linear infinite; width: 70px; height: 70px; }
         .splash-loader circle {
             stroke-dasharray: 180;
             stroke-dashoffset: 180;
@@ -83,36 +63,17 @@
             fill: none;
             stroke-linecap: round;
         }
-
-        @keyframes rotate {
-            100% { transform: rotate(360deg); }
-        }
-
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
         @keyframes dash {
             0% { stroke-dashoffset: 180; }
             50% { stroke-dashoffset: 0; }
             100% { stroke-dashoffset: -180; }
         }
-
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        .splash-subtitle {
-            color: #888;
-            margin-top: 25px;
-            font-size: 1rem;
-            animation: fadeInUp 1s ease 0.3s both;
-            letter-spacing: 2px;
-        }
-
+        .splash-subtitle { color: #888; margin-top: 25px; font-size: 1rem; animation: fadeInUp 1s ease 0.3s both; letter-spacing: 2px; }
         .splash-loading-text {
             color: #ff6b6b;
             margin-top: 15px;
@@ -120,16 +81,12 @@
             font-weight: 500;
             animation: pulse 1.5s ease-in-out infinite;
         }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
-        }
-
-        /* ===== INSTALL APP BUTTON ===== */
+        /* ===== INSTALL APP BUTTON - ALWAYS VISIBLE ===== */
         .install-btn-container {
             position: fixed;
-            bottom: 90px;
+            bottom: 20px;
             right: 20px;
             z-index: 9997;
             display: flex;
@@ -153,7 +110,6 @@
             align-items: center;
             gap: 10px;
             animation: bounceIn 0.8s ease;
-            position: relative;
         }
 
         .install-btn:hover {
@@ -161,10 +117,7 @@
             box-shadow: 0 15px 50px rgba(255,107,107,0.6);
         }
 
-        .install-btn i {
-            font-size: 1.2rem;
-        }
-
+        .install-btn i { font-size: 1.2rem; }
         .install-btn .badge {
             position: absolute;
             top: -8px;
@@ -176,24 +129,11 @@
             border-radius: 50px;
             animation: pulseBadge 2s ease-in-out infinite;
         }
-
-        @keyframes pulseBadge {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
+        @keyframes pulseBadge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         @keyframes bounceIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.5);
-            }
-            60% {
-                opacity: 1;
-                transform: scale(1.1);
-            }
-            100% {
-                transform: scale(1);
-            }
+            0% { opacity: 0; transform: scale(0.5); }
+            60% { opacity: 1; transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         .install-btn .tooltip {
@@ -213,11 +153,7 @@
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
-
-        .install-btn:hover .tooltip {
-            opacity: 1;
-        }
-
+        .install-btn:hover .tooltip { opacity: 1; }
         .install-btn .tooltip::after {
             content: '';
             position: absolute;
@@ -227,103 +163,8 @@
             border-top-color: #1a1a1a;
         }
 
-        /* ===== INSTALL BANNER (Auto) ===== */
-        .install-banner {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1a1a1a;
-            padding: 16px 24px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,107,107,0.2);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-            z-index: 99998;
-            max-width: 90%;
-            width: 500px;
-            align-items: center;
-            gap: 16px;
-            animation: slideUpBanner 0.5s ease;
-        }
+        .install-btn.hidden { display: none !important; }
 
-        .install-banner.show {
-            display: flex;
-        }
-
-        @keyframes slideUpBanner {
-            from {
-                transform: translateX(-50%) translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .install-banner .icon {
-            font-size: 2.5rem;
-            color: #ff6b6b;
-            flex-shrink: 0;
-        }
-
-        .install-banner .content {
-            flex: 1;
-        }
-
-        .install-banner .content h4 {
-            font-size: 1rem;
-            font-weight: 700;
-            margin-bottom: 2px;
-        }
-
-        .install-banner .content p {
-            color: #888;
-            font-size: 0.85rem;
-        }
-
-        .install-banner .actions {
-            display: flex;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .install-banner .actions .btn-install {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 50px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-            color: #fff;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-
-        .install-banner .actions .btn-install:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(255,107,107,0.3);
-        }
-
-        .install-banner .actions .btn-dismiss {
-            padding: 8px 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 50px;
-            background: transparent;
-            color: #888;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-        }
-
-        .install-banner .actions .btn-dismiss:hover {
-            border-color: rgba(255,255,255,0.3);
-            color: #fff;
-        }
-
-        /* ===== SCROLLING BAR ===== */
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .scrolling-text { animation: scrollText 25s linear infinite; white-space: nowrap; font-weight: 700; font-size: 0.8rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); letter-spacing: 1px; }
@@ -338,9 +179,6 @@
         .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .nav-links a.active { color: #fff; background: rgba(255,107,107,0.15); }
         .nav-links .user-info { color: #ff6b6b; font-weight: 600; margin-right: 4px; font-size: 0.7rem; }
-        .join-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important; color: #fff !important; font-weight: 700 !important; animation: pulseBtn 2s ease-in-out infinite; padding: 4px 12px !important; font-size: 0.7rem !important; }
-        @keyframes pulseBtn { 0%,100% { box-shadow: 0 0 20px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,107,0.6); } }
-        .join-btn:hover { transform: scale(1.05) !important; }
 
         .subscription-badge { background: rgba(255,107,107,0.2); color: #ff6b6b; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; }
         .subscription-badge.expired { background: rgba(255,0,0,0.2); color: #ff4444; }
@@ -431,6 +269,8 @@
         .my-video-card .card-actions .btn-edit:hover:not(:disabled) { background: rgba(255,165,0,0.4); }
         .my-video-card .card-actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
         .my-video-card .card-actions .btn-delete:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
+        .my-video-card .card-actions .btn-download { background: rgba(52,152,219,0.2); color: #3498db; }
+        .my-video-card .card-actions .btn-download:hover:not(:disabled) { background: rgba(52,152,219,0.4); }
 
         .admin-container { padding: 15px 0; max-width: 1400px; margin: 0 auto; }
         .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -591,10 +431,7 @@
             .bank-details p { flex-direction: column; gap: 2px; }
             .splash-logo { font-size: 2rem; }
             .splash-logo i { font-size: 2.5rem; }
-            .install-banner { flex-direction: column; text-align: center; padding: 16px; }
-            .install-banner .actions { width: 100%; justify-content: center; }
-            .install-banner .icon { font-size: 2rem; }
-            .install-btn-container { bottom: 80px; right: 16px; }
+            .install-btn-container { bottom: 16px; right: 16px; }
             .install-btn { padding: 12px 18px; font-size: 0.8rem; }
             .install-btn .tooltip { display: none; }
         }
@@ -606,7 +443,7 @@
             .admin-stat-card .label { font-size: 0.7rem; }
             .admin-stat-card .icon { font-size: 1.2rem; }
             .subscription-plans { grid-template-columns: 1fr; }
-            .install-btn-container { bottom: 70px; right: 12px; }
+            .install-btn-container { bottom: 12px; right: 12px; }
             .install-btn { padding: 10px 14px; font-size: 0.75rem; }
             .install-btn i { font-size: 1rem; }
         }
@@ -627,7 +464,7 @@
         <div class="splash-loading-text">Loading...</div>
     </div>
 
-    <!-- Install App - Floating Button -->
+    <!-- Install App - Floating Button (Always Visible) -->
     <div class="install-btn-container" id="installBtnContainer">
         <button class="install-btn" id="floatingInstallBtn" onclick="installApp()">
             <i class="fas fa-download"></i>
@@ -635,25 +472,6 @@
             <span class="badge">NEW</span>
             <span class="tooltip">Install BuTube on your device</span>
         </button>
-    </div>
-
-    <!-- Install App - Banner (Auto) -->
-    <div class="install-banner" id="installBanner">
-        <div class="icon">
-            <i class="fas fa-download"></i>
-        </div>
-        <div class="content">
-            <h4>Install BuTube App</h4>
-            <p>Get the full experience with our mobile app</p>
-        </div>
-        <div class="actions">
-            <button class="btn-install" onclick="installApp()">
-                <i class="fas fa-download"></i> Install
-            </button>
-            <button class="btn-dismiss" onclick="dismissInstall()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
     </div>
 
     <div class="scrolling-bar">
@@ -689,10 +507,6 @@
             <div id="videoGrid" class="video-grid"></div>
         </div>
 
-        <!-- [All the existing full-page sections remain the same - Upload, My Videos, Admin, Join, Subscription] -->
-        <!-- I'm keeping them but not repeating the full code for brevity -->
-        <!-- In production, you should keep all the existing sections -->
-        
         <div id="uploadPage" class="full-page">
             <div class="page-header">
                 <button class="back-btn" onclick="showHome()"><i class="fas fa-arrow-left"></i> Back</button>
@@ -876,6 +690,7 @@
                     <button id="likeBtn" onclick="likeVideo()"><i class="fas fa-thumbs-up"></i> <span id="likeCount">0</span></button>
                     <button id="dislikeBtn" onclick="dislikeVideo()"><i class="fas fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
                     <button id="shareBtn" onclick="shareVideo()"><i class="fas fa-share"></i> <span id="shareCount">0</span></button>
+                    <button id="downloadBtn" onclick="downloadVideo()" style="background:rgba(52,152,219,0.2); color:#3498db; border-color:rgba(52,152,219,0.3);"><i class="fas fa-download"></i> Download</button>
                     <span style="color:#888;"><i class="fas fa-eye"></i> <span id="viewCount">0</span></span>
                 </div>
                 <div class="comments-section">
@@ -930,8 +745,7 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            document.getElementById('installBanner').classList.add('show');
-            document.getElementById('installBtnContainer').style.display = 'flex';
+            document.getElementById('floatingInstallBtn').style.display = 'flex';
         });
 
         // Install app function
@@ -941,61 +755,37 @@
                 const result = await deferredPrompt.userChoice;
                 if (result.outcome === 'accepted') {
                     showToast('App installed successfully! 🎉');
-                    document.getElementById('installBanner').classList.remove('show');
-                    document.getElementById('installBtnContainer').style.display = 'none';
+                    document.getElementById('floatingInstallBtn').style.display = 'none';
                 } else {
                     showToast('Installation cancelled', 'error');
                 }
                 deferredPrompt = null;
             } else {
-                // Fallback for browsers that don't support beforeinstallprompt
+                // Fallback: Show instructions
                 showToast('Tap the menu button and select "Add to Home Screen"', 'success');
             }
         }
 
-        // Dismiss install banner
-        function dismissInstall() {
-            document.getElementById('installBanner').classList.remove('show');
-            localStorage.setItem('dismissedInstall', 'true');
-        }
-
-        // Check if user dismissed before
-        if (localStorage.getItem('dismissedInstall') === 'true') {
-            document.getElementById('installBanner').classList.remove('show');
-        }
-
-        // Show floating button always (for manual installation)
-        document.getElementById('installBtnContainer').style.display = 'flex';
-
-        // Also show banner if app is not installed and user hasn't dismissed
-        window.addEventListener('appinstalled', () => {
-            document.getElementById('installBanner').classList.remove('show');
-            document.getElementById('installBtnContainer').style.display = 'none';
-            showToast('Thank you for installing BuTube! 🎉');
-        });
-
         // Check if already installed (standalone mode)
         if (window.matchMedia('(display-mode: standalone)').matches) {
-            document.getElementById('installBtnContainer').style.display = 'none';
-            document.getElementById('installBanner').classList.remove('show');
+            document.getElementById('floatingInstallBtn').style.display = 'none';
         }
+
+        // Always show the button initially
+        document.getElementById('floatingInstallBtn').style.display = 'flex';
 
         // ===== HIDE SPLASH SCREEN =====
         document.addEventListener('DOMContentLoaded', () => {
             const splash = document.getElementById('splashScreen');
             if (splash) {
-                setTimeout(() => {
-                    splash.classList.add('hidden');
-                }, 1500);
+                setTimeout(() => { splash.classList.add('hidden'); }, 1500);
             }
         });
 
         window.addEventListener('load', () => {
             const splash = document.getElementById('splashScreen');
             if (splash) {
-                setTimeout(() => {
-                    splash.classList.add('hidden');
-                }, 800);
+                setTimeout(() => { splash.classList.add('hidden'); }, 800);
             }
         });
 
@@ -1352,6 +1142,45 @@
             renderVideos(allVideos);
         }
 
+        // ===== DOWNLOAD VIDEO FUNCTION =====
+        async function downloadVideo() {
+            if (!currentVideoId) {
+                showToast('No video selected', 'error');
+                return;
+            }
+
+            try {
+                const btn = document.getElementById('downloadBtn');
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+
+                const response = await fetch(API + '/videos/' + currentVideoId + '/stream');
+                if (!response.ok) throw new Error('Download failed');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Get video title for filename
+                const title = document.getElementById('playerTitle').textContent || 'video';
+                a.download = title + '.mp4';
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Download started!');
+            } catch (error) {
+                showToast('Download failed: ' + error.message, 'error');
+            } finally {
+                const btn = document.getElementById('downloadBtn');
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+
         async function openVideo(id) {
             currentVideoId = id;
             const overlay = document.getElementById('playerOverlay');
@@ -1630,11 +1459,33 @@
                         <div class="card-actions">
                             <button class="btn-edit" onclick="openEditModal(${v.id}, '${v.title}', '${v.description || ''}')"><i class="fas fa-edit"></i> Edit</button>
                             <button class="btn-delete" onclick="deleteVideo(${v.id})"><i class="fas fa-trash"></i> Delete</button>
+                            <button class="btn-download" onclick="downloadMyVideo(${v.id})"><i class="fas fa-download"></i> Download</button>
                         </div>
                     </div>
                 `).join('');
             } catch (error) {
                 grid.innerHTML = `<p style="text-align:center;color:#666;padding:40px;">Failed to load: ${error.message}</p>`;
+            }
+        }
+
+        // Download from My Videos
+        async function downloadMyVideo(id) {
+            try {
+                const response = await fetch(API + '/videos/' + id + '/stream');
+                if (!response.ok) throw new Error('Download failed');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'video.mp4';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('Download started!');
+            } catch (error) {
+                showToast('Download failed: ' + error.message, 'error');
             }
         }
 
