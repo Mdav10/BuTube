@@ -11,15 +11,12 @@ const xss = require('xss');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
-const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
-app.set('x-powered-by', false);
 
 // ============ ENV VALIDATION ============
 const requiredEnv = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME', 'JWT_SECRET'];
@@ -29,10 +26,6 @@ for (const env of requiredEnv) {
     process.exit(1);
   }
 }
-
-const JWT_SECRET = process.env.JWT_SECRET;
-const BCRYPT_ROUNDS = 12;
-const JWT_EXPIRY = '7d';
 
 // ============ RATE LIMITING ============
 const limiter = rateLimit({
@@ -48,7 +41,7 @@ const limiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
-  message: { error: 'Too many login attempts. Please try again later.' },
+  message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
@@ -57,7 +50,7 @@ const authLimiter = rateLimit({
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
-  message: { error: 'Too many upload attempts. Please try again later.' },
+  message: { error: 'Too many upload attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
@@ -72,41 +65,15 @@ const joinLimiter = rateLimit({
   validate: { trustProxy: false },
 });
 
-// ============ SECURITY MIDDLEWARE ============
-
-// 1. Helmet - with relaxed CSP for frontend to work
+// ============ MIDDLEWARE ============
+// Helmet with relaxed settings for frontend to work
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      mediaSrc: ["'self'"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-    },
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: { policy: "unsafe-none" },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  dnsPrefetchControl: true,
-  frameguard: { action: 'deny' },
-  hidePoweredBy: true,
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
-  ieNoOpen: true,
-  noSniff: true,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-  xssFilter: true,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 
-// 2. CORS - Allow all for now (configure as needed)
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -114,35 +81,32 @@ app.use(cors({
   credentials: true,
 }));
 
-// 3. Body Parsers
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
-app.use(cookieParser());
 app.use(compression());
+app.use(cookieParser());
 
-// 4. XSS Protection
+// XSS Protection
 app.use((req, res, next) => {
   if (req.body) {
     for (let key in req.body) {
       if (typeof req.body[key] === 'string') {
-        req.body[key] = xss(req.body[key].trim());
+        req.body[key] = xss(req.body[key]);
       }
     }
   }
   next();
 });
 
-// 5. Security Headers
+// Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
   next();
 });
 
-// ============ APPLY RATE LIMITING ============
+// ============ SECURITY: Apply Rate Limiting ============
 app.use('/api/', limiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -158,7 +122,7 @@ app.use(express.static('public'));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// ============ MULTER ============
+// ============ MULTER CONFIG ============
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -239,6 +203,7 @@ async function initDatabase() {
   try {
     console.log('🔄 Initializing database...');
 
+    // Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -252,6 +217,7 @@ async function initDatabase() {
     `);
     console.log('✅ Users table ready');
 
+    // Videos table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
@@ -275,6 +241,7 @@ async function initDatabase() {
     `);
     console.log('✅ Videos table created');
 
+    // Comments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
@@ -286,6 +253,7 @@ async function initDatabase() {
     `);
     console.log('✅ Comments table ready');
 
+    // User actions table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_actions (
         id SERIAL PRIMARY KEY,
@@ -298,6 +266,7 @@ async function initDatabase() {
     `);
     console.log('✅ User actions table ready');
 
+    // User logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
@@ -311,6 +280,7 @@ async function initDatabase() {
     `);
     console.log('✅ User logs table ready');
 
+    // Website stats table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
@@ -324,6 +294,7 @@ async function initDatabase() {
     `);
     console.log('✅ Website stats table ready');
 
+    // Payment settings table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payment_settings (
         id SERIAL PRIMARY KEY,
@@ -337,6 +308,7 @@ async function initDatabase() {
     `);
     console.log('✅ Payment settings table ready');
 
+    // Join Requests table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS join_requests (
         id SERIAL PRIMARY KEY,
@@ -357,6 +329,7 @@ async function initDatabase() {
     `);
     console.log('✅ Join requests table ready');
 
+    // Security logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS security_logs (
         id SERIAL PRIMARY KEY,
@@ -372,15 +345,15 @@ async function initDatabase() {
 
     await ensureAllColumns();
 
-    // Create Super Admin
+    // ===== CREATE SUPER ADMIN =====
     const adminUsername = process.env.ADMIN_USERNAME || 'OWNER_MPC';
     const adminPassword = process.env.ADMIN_PASSWORD || '08800+_+Owner!';
     const adminSecret = process.env.ADMIN_SECRET || 'ADMIN_SECRET_2024';
 
     const adminCheck = await pool.query('SELECT * FROM users WHERE username = $1', [adminUsername]);
     if (adminCheck.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
-      const hashedSecret = await bcrypt.hash(adminSecret, BCRYPT_ROUNDS);
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const hashedSecret = await bcrypt.hash(adminSecret, 10);
       await pool.query(
         `INSERT INTO users (username, password, secret_code, role, heard_from, is_approved, full_name) 
          VALUES ($1, $2, $3, 'super_admin', 'system', true, 'Super Administrator')`,
@@ -389,6 +362,7 @@ async function initDatabase() {
       console.log('✅ Super Admin created');
     }
 
+    // Payment settings
     const paymentCheck = await pool.query('SELECT * FROM payment_settings');
     if (paymentCheck.rows.length === 0) {
       await pool.query(`
@@ -397,6 +371,7 @@ async function initDatabase() {
       `);
     }
 
+    // Stats
     const statsCheck = await pool.query('SELECT * FROM website_stats');
     if (statsCheck.rows.length === 0) {
       await pool.query(`
@@ -419,23 +394,6 @@ async function initDatabase() {
   }
 }
 
-// ============ SECURITY LOGGING ============
-async function logSecurityEvent(eventType, details, req = null) {
-  try {
-    const userId = req?.user?.id || null;
-    const ip = req?.ip || req?.connection?.remoteAddress || 'unknown';
-    const userAgent = req?.headers?.['user-agent'] || 'unknown';
-    
-    await pool.query(
-      `INSERT INTO security_logs (user_id, event_type, ip_address, user_agent, details) 
-       VALUES ($1, $2, $3, $4, $5)`,
-      [userId, eventType, ip, userAgent, JSON.stringify(details || {})]
-    );
-  } catch (error) {
-    console.error('Security log error:', error);
-  }
-}
-
 // ============ AUTH MIDDLEWARE ============
 const authenticate = async (req, res, next) => {
   try {
@@ -445,7 +403,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await pool.query(
       `SELECT id, username, role, is_approved, subscription_end,
@@ -499,6 +457,22 @@ async function logUserActivity(userId, action, details, req) {
   }
 }
 
+async function logSecurityEvent(eventType, details, req = null) {
+  try {
+    const userId = req?.user?.id || null;
+    const ip = req?.ip || req?.connection?.remoteAddress || 'unknown';
+    const userAgent = req?.headers?.['user-agent'] || 'unknown';
+    
+    await pool.query(
+      `INSERT INTO security_logs (user_id, event_type, ip_address, user_agent, details) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, eventType, ip, userAgent, JSON.stringify(details || {})]
+    );
+  } catch (error) {
+    console.error('Security log error:', error);
+  }
+}
+
 // ============ VALIDATION HELPERS ============
 const isValidPhone = (phone) => {
   return phone && phone.length >= 8 && phone.length <= 20 && /^[\+\d\-\(\)\s]+$/.test(phone);
@@ -514,7 +488,7 @@ const isValidEmail = (email) => {
 
 // ============ AUTH ROUTES ============
 
-app.post('/api/auth/register', authLimiter, async (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, secretCode } = req.body;
 
@@ -539,8 +513,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const hashedSecret = await bcrypt.hash(secretCode, BCRYPT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedSecret = await bcrypt.hash(secretCode, 10);
 
     const result = await pool.query(
       `INSERT INTO users (username, password, secret_code, role, is_approved) 
@@ -551,8 +525,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
     const token = jwt.sign(
       { userId: result.rows[0].id, username: result.rows[0].username },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRY }
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
     res.json({
@@ -566,7 +540,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', authLimiter, async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -586,6 +560,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     );
 
     if (user.rows.length === 0) {
+      await logSecurityEvent('login_failure', { reason: 'user_not_found' }, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -593,7 +568,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     if (userData.locked_until && new Date(userData.locked_until) > new Date()) {
       return res.status(403).json({ 
-        error: `Account locked. Try again after ${new Date(userData.locked_until).toLocaleString()}`
+        error: `Account locked. Try again later.`
       });
     }
 
@@ -611,10 +586,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         [attempts, lockUntil, userData.id]
       );
 
-      return res.status(401).json({ 
-        error: 'Invalid credentials',
-        attemptsRemaining: Math.max(0, 5 - attempts)
-      });
+      await logSecurityEvent('login_failure', { reason: 'invalid_password' }, req);
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     await pool.query(
@@ -629,9 +602,11 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const token = jwt.sign(
       { userId: userData.id, username: userData.username },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRY }
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
+
+    await logSecurityEvent('login_success', { userId: userData.id }, req);
 
     res.json({
       token,
@@ -666,6 +641,15 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+app.post('/api/auth/logout', authenticate, async (req, res) => {
+  try {
+    await logSecurityEvent('logout_success', { userId: req.user.id }, req);
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
@@ -818,8 +802,8 @@ app.post('/api/admin/process-join-request/:id', authenticate, authorize('super_a
         return res.status(400).json({ error: 'Username already exists' });
       }
 
-      const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      const hashedSecret = await bcrypt.hash(secretCode, BCRYPT_ROUNDS);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedSecret = await bcrypt.hash(secretCode, 10);
 
       let subscriptionEnd = null;
       let days = parseInt(subscriptionDays) || 30;
