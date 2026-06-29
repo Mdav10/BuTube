@@ -66,7 +66,6 @@ const joinLimiter = rateLimit({
 });
 
 // ============ MIDDLEWARE ============
-// Helmet with relaxed settings for frontend to work
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
@@ -103,6 +102,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Accept-Ranges', 'bytes');
   next();
 });
 
@@ -1163,6 +1163,7 @@ app.post('/api/videos/upload', authenticate, authorize('creator', 'super_admin')
   }
 });
 
+// ============ STREAM VIDEO WITH RANGE SUPPORT & DOWNLOAD ============
 app.get('/api/videos/:id/stream', async (req, res) => {
   try {
     const videoId = parseInt(req.params.id);
@@ -1171,7 +1172,7 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT video_data, video_mimetype FROM videos WHERE id = $1 AND is_active = true',
+      'SELECT video_data, video_mimetype, video_filename FROM videos WHERE id = $1 AND is_active = true',
       [videoId]
     );
 
@@ -1183,7 +1184,21 @@ app.get('/api/videos/:id/stream', async (req, res) => {
     const videoData = video.video_data;
     const videoSize = videoData.length;
     const mimeType = video.video_mimetype || 'video/mp4';
+    const filename = video.video_filename || 'video.mp4';
 
+    // Check if it's a download request
+    const download = req.query.download === 'true';
+
+    if (download) {
+      // Force download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', videoSize);
+      res.setHeader('Cache-Control', 'no-cache');
+      return res.send(videoData);
+    }
+
+    // Streaming with range support
     const range = req.headers.range;
     
     if (!range) {
@@ -1212,6 +1227,43 @@ app.get('/api/videos/:id/stream', async (req, res) => {
   } catch (error) {
     console.error('Stream error:', error);
     res.status(500).json({ error: 'Failed to stream video: ' + error.message });
+  }
+});
+
+// ============ DOWNLOAD VIDEO (Direct download) ============
+app.get('/api/videos/:id/download', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.id);
+    if (isNaN(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    const result = await pool.query(
+      'SELECT video_data, video_mimetype, video_filename, title FROM videos WHERE id = $1 AND is_active = true',
+      [videoId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].video_data) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const video = result.rows[0];
+    const videoData = video.video_data;
+    const mimeType = video.video_mimetype || 'video/mp4';
+    const filename = video.video_filename || `${video.title || 'video'}.mp4`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Length', videoData.length);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    res.send(videoData);
+
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).json({ error: 'Failed to download video: ' + error.message });
   }
 });
 
