@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BuTube - Share, Watch, Connect</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BuTube">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ff6b6b">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -13,6 +23,110 @@
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ff6b6b, #ee5a24); border-radius: 10px; }
 
+        /* ===== PWA SPLASH SCREEN ===== */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999999;
+            transition: opacity 0.6s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            animation: fadeInUp 0.8s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .splash-logo i {
+            -webkit-text-fill-color: #ff6b6b;
+            font-size: 3.5rem;
+        }
+
+        .splash-loader {
+            width: 70px;
+            height: 70px;
+            position: relative;
+        }
+
+        .splash-loader svg {
+            animation: rotate 2s linear infinite;
+            width: 70px;
+            height: 70px;
+        }
+
+        .splash-loader circle {
+            stroke-dasharray: 180;
+            stroke-dashoffset: 180;
+            animation: dash 1.5s ease-in-out infinite;
+            stroke: #ff6b6b;
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes dash {
+            0% { stroke-dashoffset: 180; }
+            50% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -180; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .splash-subtitle {
+            color: #888;
+            margin-top: 25px;
+            font-size: 1rem;
+            animation: fadeInUp 1s ease 0.3s both;
+            letter-spacing: 2px;
+        }
+
+        .splash-loading-text {
+            color: #ff6b6b;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* ===== SCROLLING BAR ===== */
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .scrolling-text { animation: scrollText 25s linear infinite; white-space: nowrap; font-weight: 700; font-size: 0.8rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); letter-spacing: 1px; }
@@ -78,7 +192,6 @@
         .full-page .back-btn:hover { background: rgba(255,255,255,0.15); transform: translateX(-4px); }
         .full-page .page-title { font-size: 1.3rem; font-weight: 800; flex: 1; }
 
-        /* Bank Details */
         .bank-details { background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.05); }
         .bank-details h3 { color: #ff6b6b; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
         .bank-details p { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; flex-wrap: wrap; color: #aaa; font-size: 0.9rem; }
@@ -86,7 +199,6 @@
         .bank-details .label { color: #888; }
         .bank-details .value { color: #fff; font-weight: 500; }
 
-        /* Upload */
         .upload-container { max-width: 550px; margin: 0 auto; background: #1a1a1a; padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
         .upload-container input, .upload-container textarea { width: 100%; padding: 10px 14px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; font-family: inherit; }
         .upload-container textarea { min-height: 80px; resize: vertical; }
@@ -107,7 +219,6 @@
         .upload-container .progress-container .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #ee5a24); width: 0%; transition: width 0.3s ease; }
         .upload-container .progress-container .progress-text { color: #888; font-size: 0.85rem; margin-top: 4px; }
 
-        /* My Videos */
         .my-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
         .my-video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
         .my-video-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
@@ -124,7 +235,6 @@
         .my-video-card .card-actions .btn-delete { background: rgba(255,0,0,0.2); color: #ff4444; }
         .my-video-card .card-actions .btn-delete:hover:not(:disabled) { background: rgba(255,0,0,0.4); }
 
-        /* Admin */
         .admin-container { padding: 15px 0; max-width: 1400px; margin: 0 auto; }
         .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .admin-stat-card { background: #1a1a1a; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
@@ -157,7 +267,6 @@
         .list-item .actions .btn-view { background: rgba(52,152,219,0.2); color: #3498db; }
         .list-item .actions .btn-view:hover:not(:disabled) { background: rgba(52,152,219,0.4); }
 
-        /* Join & Subscription */
         .join-container, .subscription-container { max-width: 600px; margin: 0 auto; background: #1a1a1a; padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
         .join-container .sub, .subscription-container .sub { color: #888; margin-bottom: 20px; text-align: center; font-size: 0.9rem; }
         .join-container .join-form input, .join-container .join-form select { width: 100%; padding: 10px 14px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.04); color: #fff; font-size: 0.95rem; font-family: inherit; }
@@ -168,7 +277,6 @@
         .join-container .btn-submit-join:hover:not(:disabled), .subscription-container .btn-subscribe:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         .join-container .btn-submit-join:disabled, .subscription-container .btn-subscribe:disabled { opacity: 0.7; cursor: not-allowed; }
 
-        /* Subscription Plans */
         .subscription-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
         .plan-card { background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px 12px; text-align: center; transition: all 0.3s ease; cursor: pointer; }
         .plan-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.3); }
@@ -177,7 +285,6 @@
         .plan-card .price { font-size: 1.5rem; font-weight: 800; color: #ff6b6b; }
         .plan-card .duration { color: #888; font-size: 0.75rem; margin-bottom: 8px; }
 
-        /* Auth */
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
         .auth-overlay.show { display: flex; }
         .auth-box { background: #1a1a1a; border-radius: 24px; padding: 30px; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
@@ -193,7 +300,6 @@
         .auth-box .auth-toggle a { color: #ff6b6b; text-decoration: none; font-weight: 600; cursor: pointer; }
         .auth-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.05); border: none; color: #fff; font-size: 1.3rem; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; transition: all 0.3s ease; }
 
-        /* Player */
         .player-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 99997; padding: 15px; overflow-y: auto; }
         .player-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
         .player-container { max-width: 1000px; width: 100%; background: #0a0a0a; border-radius: 16px; overflow: hidden; margin: 10px auto; position: relative; }
@@ -225,7 +331,6 @@
         .add-comment .btn-post:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
         .add-comment .btn-post:disabled { opacity: 0.7; cursor: not-allowed; }
 
-        /* Edit Modal */
         .edit-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 999999; justify-content: center; align-items: center; padding: 20px; }
         .edit-modal.show { display: flex; }
         .edit-modal .modal-box { background: #1a1a1a; border-radius: 24px; padding: 24px; max-width: 450px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 40px 80px rgba(0,0,0,0.8); }
@@ -287,6 +392,8 @@
             .list-item .actions button { flex: 1; }
             .subscription-plans { grid-template-columns: 1fr 1fr; }
             .bank-details p { flex-direction: column; gap: 2px; }
+            .splash-logo { font-size: 2rem; }
+            .splash-logo i { font-size: 2.5rem; }
         }
 
         @media (max-width: 480px) {
@@ -300,6 +407,20 @@
     </style>
 </head>
 <body>
+    <!-- PWA Splash Screen -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-logo">
+            <i class="fas fa-play-circle"></i> BuTube
+        </div>
+        <div class="splash-loader">
+            <svg viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="20"/>
+            </svg>
+        </div>
+        <div class="splash-subtitle">Share, Watch, Connect</div>
+        <div class="splash-loading-text">Loading...</div>
+    </div>
+
     <div class="scrolling-bar">
         <div class="scrolling-text">🚀 BuTube - Share Your Videos, Connect With The World! &nbsp;|&nbsp; 📱 Watch Anytime, Anywhere &nbsp;|&nbsp; 🔥 Join Our Growing Community Today!</div>
     </div>
@@ -413,7 +534,6 @@
             <div class="join-container">
                 <p class="sub">Become a creator and start sharing your videos</p>
                 
-                <!-- Bank Details -->
                 <div class="bank-details" id="bankDetails">
                     <h3><i class="fas fa-university"></i> Payment Information</h3>
                     <p><span class="label">Bank:</span> <span class="value" id="displayBankName">Equity Bank</span></p>
@@ -554,7 +674,7 @@
     </div>
 
     <div class="footer">
-        <p>&copy; 2026 BuTube - Share, Watch, Connect. All rights reserved.</p>
+        <p>&copy; 2024 BuTube - Share, Watch, Connect. All rights reserved.</p>
         <div class="social">
             <a href="#"><i class="fab fa-facebook"></i></a>
             <a href="#"><i class="fab fa-twitter"></i></a>
@@ -564,6 +684,39 @@
     </div>
 
     <script>
+        // ===== HIDE SPLASH SCREEN =====
+        document.addEventListener('DOMContentLoaded', () => {
+            const splash = document.getElementById('splashScreen');
+            if (splash) {
+                setTimeout(() => {
+                    splash.classList.add('hidden');
+                }, 1500);
+            }
+        });
+
+        window.addEventListener('load', () => {
+            const splash = document.getElementById('splashScreen');
+            if (splash) {
+                setTimeout(() => {
+                    splash.classList.add('hidden');
+                }, 800);
+            }
+        });
+
+        // ===== REGISTER SERVICE WORKER =====
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // ===== STATE =====
         let currentUser = null;
         let currentVideoId = null;
         let allVideos = [];
@@ -790,7 +943,6 @@
                     updateBankDisplay();
                 }
             } catch (error) {
-                // Use defaults
                 updateBankDisplay();
             }
         }
@@ -1282,7 +1434,6 @@
                     </div>
                 `;
 
-                // Join Requests
                 const requestsList = document.getElementById('joinRequestsList');
                 const requests = data.recent.joinRequests || [];
                 if (requests.length === 0) {
@@ -1306,7 +1457,6 @@
                     `).join('');
                 }
 
-                // Users List
                 const usersList = document.getElementById('usersList');
                 const users = data.recent.users || [];
                 if (users.length === 0) {
@@ -1327,7 +1477,6 @@
                     `).join('');
                 }
 
-                // All Users with Subscription
                 const allUsersList = document.getElementById('allUsersList');
                 const allUsers = data.allUsers || [];
                 if (allUsers.length === 0) {
