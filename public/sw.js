@@ -34,6 +34,7 @@ self.addEventListener('fetch', event => {
   if (!event.request.url.startsWith(self.location.origin)) return;
   if (event.request.url.includes('/api/')) return;
   if (event.request.url.includes('/stream')) return;
+  if (event.request.url.includes('/download')) return;
 
   event.respondWith(
     caches.match(event.request)

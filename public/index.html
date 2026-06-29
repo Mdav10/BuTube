@@ -83,7 +83,7 @@
         }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-        /* ===== INSTALL APP BUTTON - ALWAYS VISIBLE ===== */
+        /* ===== INSTALL APP BUTTON ===== */
         .install-btn-container {
             position: fixed;
             bottom: 20px;
@@ -110,6 +110,7 @@
             align-items: center;
             gap: 10px;
             animation: bounceIn 0.8s ease;
+            position: relative;
         }
 
         .install-btn:hover {
@@ -135,34 +136,6 @@
             60% { opacity: 1; transform: scale(1.1); }
             100% { transform: scale(1); }
         }
-
-        .install-btn .tooltip {
-            position: absolute;
-            bottom: calc(100% + 12px);
-            right: 0;
-            background: #1a1a1a;
-            color: #fff;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            white-space: nowrap;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .install-btn:hover .tooltip { opacity: 1; }
-        .install-btn .tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            right: 20px;
-            border: 6px solid transparent;
-            border-top-color: #1a1a1a;
-        }
-
         .install-btn.hidden { display: none !important; }
 
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
@@ -195,13 +168,13 @@
         .search-container .btn-search:disabled { opacity: 0.7; cursor: not-allowed; }
         .search-container .btn-clear { padding: 8px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 50px; background: transparent; color: #888; cursor: pointer; transition: all 0.3s ease; font-size: 0.85rem; }
 
-        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 10px 0; }
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 10px 0; }
         .video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; transition: all 0.4s ease; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); }
         .video-card:hover { transform: translateY(-10px); box-shadow: 0 20px 60px rgba(0,0,0,0.8); border-color: rgba(255,107,107,0.3); }
-        .video-thumbnail { width: 100%; height: 160px; object-fit: cover; background: #111; }
-        .video-info { padding: 12px; }
-        .video-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
-        .video-meta { font-size: 0.75rem; color: #888; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .video-thumbnail { width: 100%; height: 180px; object-fit: cover; background: #111; }
+        .video-info { padding: 14px; }
+        .video-title { font-size: 1rem; font-weight: 600; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+        .video-meta { font-size: 0.8rem; color: #888; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .hidden { display: none !important; }
         .loading { text-align: center; padding: 40px 20px; color: #666; }
@@ -254,10 +227,10 @@
         .upload-container .progress-container .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #ee5a24); width: 0%; transition: width 0.3s ease; }
         .upload-container .progress-container .progress-text { color: #888; font-size: 0.85rem; margin-top: 4px; }
 
-        .my-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+        .my-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
         .my-video-card { background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
         .my-video-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
-        .my-video-card .thumbnail { width: 100%; height: 140px; object-fit: cover; background: #111; cursor: pointer; }
+        .my-video-card .thumbnail { width: 100%; height: 150px; object-fit: cover; background: #111; cursor: pointer; }
         .my-video-card .info { padding: 12px; cursor: pointer; }
         .my-video-card .info .title { font-weight: 600; margin-bottom: 4px; font-size: 0.95rem; }
         .my-video-card .info .meta { font-size: 0.75rem; color: #888; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -273,7 +246,7 @@
         .my-video-card .card-actions .btn-download:hover:not(:disabled) { background: rgba(52,152,219,0.4); }
 
         .admin-container { padding: 15px 0; max-width: 1400px; margin: 0 auto; }
-        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .admin-stat-card { background: #1a1a1a; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: center; transition: all 0.3s ease; }
         .admin-stat-card:hover { transform: translateY(-4px); border-color: rgba(255,107,107,0.2); }
         .admin-stat-card .icon { font-size: 1.6rem; color: #ff6b6b; margin-bottom: 4px; }
@@ -433,7 +406,7 @@
             .splash-logo i { font-size: 2.5rem; }
             .install-btn-container { bottom: 16px; right: 16px; }
             .install-btn { padding: 12px 18px; font-size: 0.8rem; }
-            .install-btn .tooltip { display: none; }
+            .my-videos-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 480px) {
@@ -464,13 +437,12 @@
         <div class="splash-loading-text">Loading...</div>
     </div>
 
-    <!-- Install App - Floating Button (Always Visible) -->
+    <!-- Install App - Floating Button -->
     <div class="install-btn-container" id="installBtnContainer">
         <button class="install-btn" id="floatingInstallBtn" onclick="installApp()">
             <i class="fas fa-download"></i>
             <span>Install App</span>
             <span class="badge">NEW</span>
-            <span class="tooltip">Install BuTube on your device</span>
         </button>
     </div>
 
@@ -741,14 +713,12 @@
         // ===== PWA INSTALLATION =====
         let deferredPrompt = null;
 
-        // Listen for beforeinstallprompt event
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             document.getElementById('floatingInstallBtn').style.display = 'flex';
         });
 
-        // Install app function
         async function installApp() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
@@ -761,17 +731,14 @@
                 }
                 deferredPrompt = null;
             } else {
-                // Fallback: Show instructions
                 showToast('Tap the menu button and select "Add to Home Screen"', 'success');
             }
         }
 
-        // Check if already installed (standalone mode)
         if (window.matchMedia('(display-mode: standalone)').matches) {
             document.getElementById('floatingInstallBtn').style.display = 'none';
         }
 
-        // Always show the button initially
         document.getElementById('floatingInstallBtn').style.display = 'flex';
 
         // ===== HIDE SPLASH SCREEN =====
@@ -1154,7 +1121,7 @@
                 btn.classList.add('btn-loading');
                 btn.disabled = true;
 
-                const response = await fetch(API + '/videos/' + currentVideoId + '/stream');
+                const response = await fetch(API + '/videos/' + currentVideoId + '/download');
                 if (!response.ok) throw new Error('Download failed');
                 
                 const blob = await response.blob();
@@ -1162,7 +1129,6 @@
                 const a = document.createElement('a');
                 a.href = url;
                 
-                // Get video title for filename
                 const title = document.getElementById('playerTitle').textContent || 'video';
                 a.download = title + '.mp4';
                 
@@ -1171,7 +1137,7 @@
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
                 
-                showToast('Download started!');
+                showToast('Download started! 📥');
             } catch (error) {
                 showToast('Download failed: ' + error.message, 'error');
             } finally {
@@ -1471,19 +1437,23 @@
         // Download from My Videos
         async function downloadMyVideo(id) {
             try {
-                const response = await fetch(API + '/videos/' + id + '/stream');
+                const response = await fetch(API + '/videos/' + id + '/download');
                 if (!response.ok) throw new Error('Download failed');
                 
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'video.mp4';
+                
+                // Find video title
+                const video = allVideos.find(v => v.id === id);
+                a.download = (video ? video.title : 'video') + '.mp4';
+                
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                showToast('Download started!');
+                showToast('Download started! 📥');
             } catch (error) {
                 showToast('Download failed: ' + error.message, 'error');
             }

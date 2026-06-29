@@ -56,10 +56,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "splash_pages": null,
-  "display_override": ["standalone", "minimal-ui"],
-  "prefer_related_applications": false,
-  "categories": ["video", "entertainment", "social"],
-  "lang": "en"
+  ]
 }
