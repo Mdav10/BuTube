@@ -1,4 +1,4 @@
-const CACHE_NAME = 'butube-v1';
+const CACHE_NAME = 'butube-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,20 +8,26 @@ const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap'
 ];
 
+// Install Service Worker
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(cache => {
+        console.log('Caching static assets');
+        return cache.addAll(STATIC_ASSETS);
+      })
       .then(() => self.skipWaiting())
   );
 });
 
+// Activate Service Worker
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cache => {
           if (cache !== CACHE_NAME) {
+            console.log('Deleting old cache:', cache);
             return caches.delete(cache);
           }
         })
@@ -30,25 +36,55 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Fetch Strategy - Cache First, then Network
 self.addEventListener('fetch', event => {
-  if (!event.request.url.startsWith(self.location.origin)) return;
-  if (event.request.url.includes('/api/')) return;
-  if (event.request.url.includes('/stream')) return;
-  if (event.request.url.includes('/download')) return;
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Skip API calls
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
+  // Skip video streams and downloads
+  if (event.request.url.includes('/stream') || event.request.url.includes('/download')) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
-        if (cachedResponse) return cachedResponse;
+        if (cachedResponse) {
+          return cachedResponse;
+        }
         return fetch(event.request)
           .then(response => {
+            // Cache successful responses
             if (response.status === 200) {
               const clone = response.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, clone);
+              });
             }
             return response;
           });
       })
-      .catch(() => caches.match('/index.html'))
+      .catch(() => {
+        // Return offline page if available
+        return caches.match('/index.html');
+      })
   );
+});
+
+// Handle offline fallback
+self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/index.html');
+      })
+    );
+  }
 });
