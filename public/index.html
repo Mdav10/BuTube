@@ -7,14 +7,14 @@
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/butube-icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BuTube">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ff6b6b">
     <meta name="msapplication-TileColor" content="#ff6b6b">
-    <meta name="msapplication-TileImage" content="/icons/butube-icon-144.png">
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.svg">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -85,17 +85,18 @@
         }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-        /* ===== INSTALL APP BUTTON ===== */
+        /* ===== INSTALL APP BUTTON - NATIVE PWA INSTALL ===== */
         .install-btn-container {
             position: fixed;
             bottom: 30px;
             right: 20px;
             z-index: 9997;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             gap: 8px;
         }
+        .install-btn-container.show { display: flex; }
 
         .install-btn {
             background: linear-gradient(135deg, #ff6b6b, #ee5a24);
@@ -142,90 +143,6 @@
         }
         .install-btn.hidden { display: none !important; }
 
-        /* ===== DOWNLOAD PROGRESS OVERLAY ===== */
-        .download-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(10px);
-            z-index: 999998;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            padding: 20px;
-        }
-        .download-overlay.show { display: flex; }
-        .download-overlay .download-box {
-            background: #1a1a1a;
-            padding: 40px 50px;
-            border-radius: 24px;
-            max-width: 450px;
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
-            text-align: center;
-        }
-        .download-overlay .download-box .icon {
-            font-size: 3.5rem;
-            color: #ff6b6b;
-            margin-bottom: 16px;
-        }
-        .download-overlay .download-box h3 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .download-overlay .download-box p {
-            color: #888;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-        }
-        .download-overlay .download-box .progress-wrapper {
-            width: 100%;
-            background: rgba(255,255,255,0.05);
-            border-radius: 50px;
-            overflow: hidden;
-            height: 12px;
-            position: relative;
-        }
-        .download-overlay .download-box .progress-wrapper .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
-            border-radius: 50px;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        .download-overlay .download-box .progress-text {
-            margin-top: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #ff6b6b;
-        }
-        .download-overlay .download-box .progress-details {
-            color: #666;
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-        .download-overlay .download-box .btn-close-download {
-            margin-top: 20px;
-            padding: 10px 30px;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 50px;
-            background: transparent;
-            color: #888;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-        }
-        .download-overlay .download-box .btn-close-download:hover {
-            border-color: rgba(255,255,255,0.2);
-            color: #fff;
-        }
-
         .scrolling-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b); background-size: 200% 100%; animation: gradientMove 3s ease infinite; padding: 6px 0; overflow: hidden; box-shadow: 0 4px 30px rgba(255,107,107,0.3); }
         @keyframes gradientMove { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .scrolling-text { animation: scrollText 25s linear infinite; white-space: nowrap; font-weight: 700; font-size: 0.8rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); letter-spacing: 1px; }
@@ -246,13 +163,14 @@
             font-weight: 700 !important;
             padding: 4px 14px !important;
             border-radius: 50px !important;
-            display: flex;
+            display: none;
             align-items: center;
             gap: 4px;
             cursor: pointer;
             font-size: 0.7rem;
             animation: pulseBtn 2s ease-in-out infinite;
         }
+        .nav-links .nav-install.show { display: flex; }
         @keyframes pulseBtn { 0%, 100% { box-shadow: 0 0 20px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,107,0.6); } }
 
         .subscription-badge { background: rgba(255,107,107,0.2); color: #ff6b6b; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 600; margin-left: 4px; }
@@ -533,7 +451,6 @@
             .install-btn { padding: 12px 20px; font-size: 0.85rem; min-width: 130px; }
             .install-btn i { font-size: 1.1rem; }
             .my-videos-grid { grid-template-columns: 1fr; }
-            .download-overlay .download-box { padding: 30px 20px; margin: 20px; }
         }
 
         @media (max-width: 480px) {
@@ -547,8 +464,6 @@
             .install-btn { padding: 10px 16px; font-size: 0.75rem; min-width: 100px; }
             .install-btn i { font-size: 1rem; }
             .install-btn .badge { font-size: 0.5rem; padding: 2px 6px; top: -8px; right: -8px; }
-            .download-overlay .download-box .icon { font-size: 2.5rem; }
-            .download-overlay .download-box h3 { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -567,22 +482,7 @@
         <div class="splash-loading-text">Loading...</div>
     </div>
 
-    <!-- Download Progress Overlay -->
-    <div class="download-overlay" id="downloadOverlay">
-        <div class="download-box">
-            <div class="icon"><i class="fas fa-download"></i></div>
-            <h3>Downloading Video</h3>
-            <p id="downloadFileName">Please wait...</p>
-            <div class="progress-wrapper">
-                <div class="progress-fill" id="downloadProgressFill"></div>
-            </div>
-            <div class="progress-text" id="downloadProgressText">0%</div>
-            <div class="progress-details" id="downloadProgressDetails">Preparing...</div>
-            <button class="btn-close-download" onclick="closeDownloadOverlay()">Close</button>
-        </div>
-    </div>
-
-    <!-- Install App - Floating Button -->
+    <!-- Install App - Native PWA Install Button -->
     <div class="install-btn-container" id="installBtnContainer">
         <button class="install-btn" id="floatingInstallBtn" onclick="installApp()">
             <i class="fas fa-download"></i>
@@ -856,67 +756,74 @@
     </div>
 
     <script>
-        // ===== PWA INSTALLATION =====
+        // ===== PWA INSTALLATION - NATIVE ANDROID APP INSTALL =====
         let deferredPrompt = null;
 
+        // Listen for the beforeinstallprompt event
         window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67+ from automatically showing the prompt
             e.preventDefault();
+            // Stash the event so it can be triggered later
             deferredPrompt = e;
-            document.getElementById('floatingInstallBtn').style.display = 'flex';
-            document.getElementById('navInstall').style.display = 'flex';
+            // Show the install button
+            document.getElementById('installBtnContainer').classList.add('show');
+            document.getElementById('navInstall').classList.add('show');
+            console.log('✅ App is installable! Native install prompt ready.');
         });
 
+        // Install button click handler - triggers native install
         async function installApp() {
             if (deferredPrompt) {
+                // Show the native install prompt (this is the REAL Android app install)
                 deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
                 const result = await deferredPrompt.userChoice;
                 if (result.outcome === 'accepted') {
+                    console.log('✅ User accepted the install prompt - App installed!');
                     showToast('App installed successfully! 🎉');
-                    document.getElementById('floatingInstallBtn').style.display = 'none';
-                    document.getElementById('navInstall').style.display = 'none';
+                    document.getElementById('installBtnContainer').classList.remove('show');
+                    document.getElementById('navInstall').classList.remove('show');
                 } else {
+                    console.log('❌ User dismissed the install prompt');
                     showToast('Installation cancelled', 'error');
                 }
                 deferredPrompt = null;
             } else {
-                // Show download overlay for manual installation
-                showDownloadProgress('BuTube App', 'Installing...', 0);
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 10;
-                    if (progress >= 100) {
-                        progress = 100;
-                        clearInterval(interval);
-                        setTimeout(() => {
-                            closeDownloadOverlay();
-                            showToast('Tap the menu button and select "Add to Home Screen"', 'success');
-                        }, 500);
-                    }
-                    updateDownloadProgress(Math.round(progress), 'Installing...');
-                }, 300);
+                // If beforeinstallprompt hasn't fired yet, check why
+                console.log('⚠️ beforeinstallprompt not fired yet. Checking requirements...');
+                
+                // Check if service worker is registered
+                if (!navigator.serviceWorker.controller) {
+                    showToast('Please refresh the page and try again', 'error');
+                    return;
+                }
+                
+                // Check if manifest is loaded
+                const manifestLink = document.querySelector('link[rel="manifest"]');
+                if (!manifestLink) {
+                    showToast('Manifest not found. Please contact support.', 'error');
+                    return;
+                }
+                
+                // If all requirements are met but prompt didn't fire,
+                // it might be because user needs to interact with the page first
+                showToast('Please browse the site for a moment, then try again', 'error');
             }
         }
 
-        // ===== DOWNLOAD PROGRESS OVERLAY FUNCTIONS =====
-        function showDownloadProgress(filename, status, progress) {
-            const overlay = document.getElementById('downloadOverlay');
-            document.getElementById('downloadFileName').textContent = filename;
-            document.getElementById('downloadProgressDetails').textContent = status;
-            document.getElementById('downloadProgressFill').style.width = progress + '%';
-            document.getElementById('downloadProgressText').textContent = progress + '%';
-            overlay.classList.add('show');
-        }
+        // Listen for app installed event
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ App was installed successfully!');
+            document.getElementById('installBtnContainer').classList.remove('show');
+            document.getElementById('navInstall').classList.remove('show');
+            showToast('Thank you for installing BuTube! 🎉');
+        });
 
-        function updateDownloadProgress(progress, status) {
-            document.getElementById('downloadProgressFill').style.width = progress + '%';
-            document.getElementById('downloadProgressText').textContent = progress + '%';
-            if (status) {
-                document.getElementById('downloadProgressDetails').textContent = status;
-            }
-        }
-
-        function closeDownloadOverlay() {
-            document.getElementById('downloadOverlay').classList.remove('show');
+        // Hide install buttons if already installed (standalone mode)
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.getElementById('installBtnContainer').classList.remove('show');
+            document.getElementById('navInstall').classList.remove('show');
+            console.log('📱 App is already installed');
         }
 
         // ===== HIDE SPLASH SCREEN =====
@@ -1287,7 +1194,7 @@
             renderVideos(allVideos);
         }
 
-        // ===== DOWNLOAD VIDEO FUNCTION WITH PROGRESS =====
+        // ===== DOWNLOAD VIDEO WITH PROGRESS =====
         async function downloadVideo() {
             if (!currentVideoId) {
                 showToast('No video selected', 'error');
@@ -1301,36 +1208,11 @@
             const title = document.getElementById('playerTitle').textContent || 'video';
             const filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.mp4';
 
-            showDownloadProgress(filename, 'Starting download...', 0);
-
             try {
                 const response = await fetch(API + '/videos/' + currentVideoId + '/download');
-                
                 if (!response.ok) throw new Error('Download failed');
-
-                const contentLength = response.headers.get('content-length');
-                const total = parseInt(contentLength, 10);
-
-                const reader = response.body.getReader();
-                const chunks = [];
-                let loaded = 0;
-
-                updateDownloadProgress(0, 'Downloading...');
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    chunks.push(value);
-                    loaded += value.length;
-                    
-                    if (total) {
-                        const percent = Math.round((loaded / total) * 100);
-                        updateDownloadProgress(percent, 'Downloading...');
-                    }
-                }
-
-                const blob = new Blob(chunks);
+                
+                const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -1344,14 +1226,9 @@
                     window.URL.revokeObjectURL(url);
                 }, 100);
 
-                updateDownloadProgress(100, 'Complete!');
-                setTimeout(() => {
-                    closeDownloadOverlay();
-                    showToast('Download complete! 📥', 'success');
-                }, 800);
+                showToast('Download complete! 📥', 'success');
 
             } catch (error) {
-                closeDownloadOverlay();
                 showToast('Download failed: ' + error.message, 'error');
             } finally {
                 btn.classList.remove('btn-loading');
@@ -1359,42 +1236,16 @@
             }
         }
 
-        // Download from My Videos
         async function downloadMyVideo(id) {
             const video = allVideos.find(v => v.id === id);
             const title = video ? video.title : 'video';
             const filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.mp4';
 
-            showDownloadProgress(filename, 'Starting download...', 0);
-
             try {
                 const response = await fetch(API + '/videos/' + id + '/download');
-                
                 if (!response.ok) throw new Error('Download failed');
-
-                const contentLength = response.headers.get('content-length');
-                const total = parseInt(contentLength, 10);
-
-                const reader = response.body.getReader();
-                const chunks = [];
-                let loaded = 0;
-
-                updateDownloadProgress(0, 'Downloading...');
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    chunks.push(value);
-                    loaded += value.length;
-                    
-                    if (total) {
-                        const percent = Math.round((loaded / total) * 100);
-                        updateDownloadProgress(percent, 'Downloading...');
-                    }
-                }
-
-                const blob = new Blob(chunks);
+                
+                const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -1408,14 +1259,9 @@
                     window.URL.revokeObjectURL(url);
                 }, 100);
 
-                updateDownloadProgress(100, 'Complete!');
-                setTimeout(() => {
-                    closeDownloadOverlay();
-                    showToast('Download complete! 📥', 'success');
-                }, 800);
+                showToast('Download complete! 📥', 'success');
 
             } catch (error) {
-                closeDownloadOverlay();
                 showToast('Download failed: ' + error.message, 'error');
             }
         }
